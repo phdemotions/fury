@@ -1,0 +1,4 @@
+fury_execute_recipe     Execute a Recipe to Produce Audit Artifacts
+fury_run                Run the Complete fury Workflow from a Spec File
+fury_scope              Return the Scope Statement for fury
+fury_write_bundle       Write an Audit Bundle from a Result Object

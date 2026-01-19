@@ -1,0 +1,31 @@
+Package: fury
+Type: Package
+Title: Pre-Analysis Data Ingestion and Audit Layer for Consumer
+        Psychology Research
+Version: 0.1.0
+Authors@R: c(
+    person(
+        given = "Josh",
+        family = "Gonzales",
+        role = c("aut", "cre"),
+        email = "jgonza10@uoguelph.ca",
+        comment = c(ORCID = "0000-0001-8633-3380")
+    ))
+Description: Consumes validated niche_spec and niche_recipe objects to orchestrate
+    data ingestion, produce audit artifacts, and return niche_result objects. Does not
+    perform modeling, scoring, construct validation, or APA rendering. Part of the
+    'niche' R universe for reproducible consumer psychology research.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports: nicheCore, vision, cli, fs, utils
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+NeedsCompilation: no
+Packaged: 2026-01-19 03:20:28 UTC; josh
+Author: Josh Gonzales [aut, cre] (ORCID:
+    <https://orcid.org/0000-0001-8633-3380>)
+Maintainer: Josh Gonzales <jgonza10@uoguelph.ca>
+Built: R 4.5.2; ; 2026-01-19 03:20:41 UTC; unix

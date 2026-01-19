@@ -1,0 +1,163 @@
+---
+title: "From Spec to Audit Bundle (No Analysis)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{From Spec to Audit Bundle (No Analysis)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+This vignette demonstrates the `fury` workflow: from a validated spec file to a complete audit bundle, **without performing any statistical analysis**.
+
+`fury` is a pre-analysis data ingestion and audit layer. It orchestrates the following:
+
+1. Reading and validating a spec file (via `vision`)
+2. Building a recipe (via `vision`)
+3. Ingesting data (placeholder in v0.1.0)
+4. Producing audit artifacts (source manifest, import log, codebook, session info)
+5. Returning a `niche_result` object
+
+`fury` does **not** perform modeling, scoring, construct validation, or APA rendering.
+
+---
+
+## Setup
+
+```{r setup}
+library(fury)
+library(vision)
+```
+
+---
+
+## Step 1: Create a minimal spec
+
+We'll use `vision::write_spec_template()` to generate a minimal valid spec file.
+
+```{r create-spec}
+# Create temp spec file
+spec_path <- tempfile(fileext = ".yaml")
+vision::write_spec_template(spec_path)
+
+# Inspect the spec (first few lines)
+readLines(spec_path, n = 20)
+```
+
+---
+
+## Step 2: Run the fury workflow
+
+The `fury_run()` function is the novice-friendly entry point. It:
+
+- Reads and validates the spec
+- Builds a recipe
+- Executes the recipe to produce audit artifacts
+
+```{r run-fury}
+# Create temp output directory
+out_dir <- tempdir()
+
+# Run fury
+result <- fury_run(spec_path, out_dir = out_dir)
+
+# Examine result
+print(result)
+```
+
+---
+
+## Step 3: Inspect audit artifacts
+
+The `niche_result` object contains paths to all audit artifacts.
+
+```{r inspect-artifacts}
+# List artifact files
+list.files(result$artifacts$audit_dir)
+```
+
+### Source Manifest
+
+The source manifest tracks all data sources (placeholder in v0.1.0):
+
+```{r source-manifest}
+manifest <- read.csv(result$artifacts$source_manifest)
+print(manifest)
+```
+
+### Import Log
+
+The import log tracks data ingestion steps (placeholder in v0.1.0):
+
+```{r import-log}
+import_log <- read.csv(result$artifacts$import_log)
+print(import_log)
+```
+
+### Raw Codebook
+
+The raw codebook describes variables in ingested data (placeholder in v0.1.0):
+
+```{r raw-codebook}
+codebook <- read.csv(result$artifacts$raw_codebook)
+print(codebook)
+```
+
+### Session Info
+
+The session info captures R version and loaded packages:
+
+```{r session-info}
+session_lines <- readLines(result$artifacts$session_info)
+cat(session_lines[1:10], sep = "\n")
+```
+
+---
+
+## Step 4: Write bundle (optional)
+
+You can verify or re-export the audit bundle using `fury_write_bundle()`:
+
+```{r write-bundle}
+bundle_path <- fury_write_bundle(result, out_dir = out_dir)
+print(bundle_path)
+```
+
+---
+
+## What's next?
+
+In future versions, `fury` will:
+
+- Ingest data from sources specified in the spec
+- Validate data against schema rules
+- Generate real source manifests, import logs, and codebooks
+- Support multiple data formats (CSV, SPSS, Qualtrics, etc.)
+
+However, `fury` will **never** perform modeling, scoring, or APA rendering. Those tasks belong to downstream packages in the niche R universe.
+
+---
+
+## Scope reminder
+
+```{r scope}
+fury_scope()
+```
+
+---
+
+## Cleanup
+
+```{r cleanup, include=FALSE}
+# Clean up temp files
+unlink(spec_path)
+unlink(out_dir, recursive = TRUE)
+```

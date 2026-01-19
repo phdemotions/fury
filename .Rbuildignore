@@ -1,0 +1,6 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.git$
+^\.gitattributes$
+^\.DS_Store$
+^\.claude$
