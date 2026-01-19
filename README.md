@@ -43,7 +43,129 @@ devtools::load_all()
 
 ---
 
-## Minimal example
+## Quick Start for Beginners
+
+**You collected data in Qualtrics and need to:**
+1. Exclude participants who failed attention checks
+2. Separate pilot/pretest data from your main study
+3. Document participant flow for your journal submission
+
+Here's what to do:
+
+### Step 1: Install the package
+
+```r
+# Install from GitHub (when available)
+remotes::install_github("phdemotions/fury")
+```
+
+### Step 2: Export your Qualtrics data
+
+Export your Qualtrics survey as **SPSS (.sav)** format. This preserves item text and response labels.
+
+### Step 3: Tell fury what to do
+
+Create a simple text file (YAML format) that describes:
+- Which participants are pilots/pretests (by date or ID)
+- Which variables must be non-missing (e.g., consent)
+- Which variables are attention checks (and what the correct answers are)
+
+**Example screening rules:**
+
+```yaml
+data:
+  sources:
+    - file: "my_qualtrics_data.sav"
+      format: "spss"
+
+  screening:
+    # Separate pilot data collected Jan 1-15
+    partitioning:
+      pilot:
+        by: "date_range"
+        date_var: "StartDate"
+        start: "2024-01-01"
+        end: "2024-01-15"
+
+    # Exclude anyone missing consent
+    eligibility:
+      required_nonmissing: ["consent"]
+      action: "exclude"
+
+    # Flag (but don't remove) attention check failures
+    quality_flags:
+      attention_checks:
+        - var: "attn_check_1"
+          pass_values: [3]  # Correct answer is "3"
+          description: "Instructions said select 3"
+          action: "flag"
+```
+
+### Step 4: Run fury
+
+```r
+library(fury)
+
+# Run screening and generate audit artifacts
+result <- fury_run("my_screening_rules.yaml", out_dir = "my_audit")
+```
+
+### Step 5: Check the results
+
+fury creates several files in `my_audit/audit/`:
+
+- **`screening_summary.csv`** — Quick overview (read this first!)
+- **`warnings.csv`** — Alerts if you forgot to declare pilots or if flagged cases are still in your data
+- **`decision_registry.csv`** — Shows exactly what you declared vs. didn't declare
+- **`consort_flow.csv`** — Participant flow diagram data for your Methods section
+
+**Important:** Open `warnings.csv` first. It will tell you if something looks wrong.
+
+---
+
+## Advanced: Tidyverse-Style Spec Builder
+
+**For R users who prefer pipes over YAML:**
+
+fury provides a fluent API for building specs interactively. You write R code, then **export to YAML** for preregistration:
+
+```r
+library(fury)
+
+# Build spec using tidyverse-style pipes
+spec <- fury_spec() %>%
+  fury_source("my_qualtrics_data.sav", format = "spss") %>%
+  fury_partition_pilot(
+    date_var = "StartDate",
+    start = "2024-01-01",
+    end = "2024-01-15"
+  ) %>%
+  fury_exclude_missing(c("consent", "age")) %>%
+  fury_flag_attention(
+    var = "attn_check_1",
+    pass_values = 3,
+    description = "Instructions said select 3"
+  ) %>%
+  fury_to_yaml("my_screening_spec.yaml")  # Export for preregistration
+
+# Preview the spec
+print(spec)
+
+# Then use the YAML for reproducible execution
+result <- fury_run("my_screening_spec.yaml")
+```
+
+**Why this approach?**
+- ✅ Write in familiar R syntax
+- ✅ Export to YAML for preregistration/version control
+- ✅ YAML becomes the "source of truth" for reproducibility
+- ✅ Best of both worlds: R convenience + YAML auditability
+
+---
+
+## Advanced example (ecosystem integration)
+
+For researchers already familiar with the niche R universe:
 
 ```r
 library(fury)
@@ -63,14 +185,6 @@ print(result)
 list.files(result$artifacts$audit_dir)
 ```
 
-Expected output:
-
-```
-[1] "recipe.json"          "source_manifest.csv"
-[3] "import_log.csv"       "raw_codebook.csv"
-[5] "session_info.txt"
-```
-
 ---
 
 ## Workflow
@@ -81,45 +195,64 @@ Expected output:
 
 ---
 
-## Important concepts for participant screening
+## Important concepts (read this before using fury!)
 
-### Flags do NOT remove cases
+### 🚨 Flagging vs. Excluding — THEY ARE DIFFERENT
 
-**CRITICAL:** When you "flag" cases for quality issues (e.g., attention check failures, speeding), those cases are **marked** but **NOT removed** from your data.
+**The #1 mistake beginners make:**
 
-- **Flagging** identifies cases that may have quality issues
-- **Exclusion** removes cases from the analysis pool
-- If you want flagged cases removed, you must explicitly use an exclusion rule (set `action: "exclude"`)
+When you set `action: "flag"` for an attention check, those participants are **marked** but **STILL IN YOUR DATA**.
 
-The audit artifacts will warn you if flagged cases are present in your analysis pool.
+- ✅ `action: "flag"` → Marks bad responses, keeps them in your data (for sensitivity analysis)
+- ✅ `action: "exclude"` → Removes bad responses from your data
 
-### Pilot and pretest partitioning must be declared
+**Which should you use?**
 
-If you collected pilot or pretest data:
+- Use `"exclude"` for **eligibility criteria** (e.g., must have consent, must be 18+)
+- Use `"flag"` for **quality checks** (e.g., attention checks, speeders) — then decide later whether to exclude
 
-- You **must** declare `partitioning` rules in your spec/recipe
-- If you omit partitioning rules, the audit bundle will explicitly state "No partitioning declared"
-- Pilots and pretests that are not declared may be silently included in your main analysis pool
+fury will **warn you** if flagged cases are still in your analysis pool.
 
-The `decision_registry.csv` artifact explicitly documents whether pilot/pretest partitions were declared.
+### 📅 Pilot and pretest data must be declared
 
-### Check the audit artifacts
+If you ran a pilot study or pretest **before** your main data collection:
 
-After running `fury`, examine these novice-friendly artifacts in the `audit/` directory:
+- You **must** tell fury the dates or IDs of those participants
+- If you don't, fury assumes they're part of your main study
+- Use the `partitioning:` section in your YAML file (see example above)
 
-- **`screening_summary.csv`**: High-level overview of partitions, exclusions, and flags
-- **`decision_registry.csv`**: Explicit record of what was declared vs. not declared
-- **`warnings.csv`**: Risk states detected (e.g., flags in analysis pool, no partitioning declared)
-- **`consort_flow.csv`**: Sequential participant flow with clarifying notes
+fury will show "Pilot partition present: No" in `screening_summary.csv` if you forgot.
+
+### 📊 Always check these files after running fury
+
+Open these files (they're just CSVs you can open in Excel):
+
+1. **`warnings.csv`** — START HERE. Tells you if something looks wrong.
+2. **`screening_summary.csv`** — Quick overview of what happened.
+3. **`decision_registry.csv`** — Did you declare pilots? Exclusions? (Yes/No for each)
+4. **`consort_flow.csv`** — Participant counts for your Methods section.
+
+**If `warnings.csv` is empty, you're probably good to go.**
 
 ---
 
 ## Exported functions
 
+### Core Functions
 - `fury_run(spec_path, out_dir)`: Novice-friendly entry point. Reads spec, builds recipe, executes ingestion.
 - `fury_execute_recipe(recipe, out_dir)`: Core execution function. Takes a `niche_recipe`, produces `niche_result`.
 - `fury_write_bundle(result, out_dir)`: Writes/verifies audit bundle from `niche_result`.
 - `fury_scope()`: Returns scope statement (used in docs/tests to prevent drift).
+
+### Tidyverse-Style Spec Builders (NEW!)
+- `fury_spec()`: Start building a screening spec interactively
+- `fury_source(builder, file, format)`: Add data source
+- `fury_partition_pilot(builder, date_var, start, end)`: Declare pilot partition
+- `fury_partition_pretest(builder, date_var, start, end)`: Declare pretest partition
+- `fury_exclude_missing(builder, vars)`: Exclude cases with missing values
+- `fury_flag_missing(builder, vars)`: Flag (don't exclude) missing values
+- `fury_flag_attention(builder, var, pass_values, description, action)`: Add attention check
+- `fury_to_yaml(builder, path)`: Export spec to YAML file for preregistration
 
 ---
 
