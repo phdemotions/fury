@@ -43,34 +43,108 @@ devtools::load_all()
 
 ---
 
-## Quick Start for Beginners
+## 5-Minute Quick Start 🚀
+
+**New to fury? Just want to see it work?** Copy-paste this:
+
+```r
+# Install
+install.packages("remotes")
+remotes::install_github("phdemotions/fury")
+install.packages("haven")
+
+# Run on test data (works immediately!)
+library(fury)
+test_file <- system.file("extdata", "test_minimal.sav", package = "fury")
+result <- fury_run(
+  fury_spec() %>% fury_source(test_file, format = "spss"),
+  out_dir = tempdir()
+)
+print(result)
+```
+
+**Now use YOUR data:**
+
+```r
+library(fury)
+
+# Let R find your file (opens file picker - no typing paths!)
+my_file <- file.choose()  # Select your .sav file
+
+# Run fury
+result <- fury_run(
+  fury_spec() %>% fury_source(my_file, format = "spss"),
+  out_dir = "my_results"  # Creates this folder
+)
+
+# Open results
+browseURL(result$artifacts$audit_dir)
+```
+
+**Want to exclude non-consenters?** Add one line:
+
+```r
+result <- fury_run(
+  fury_spec() %>%
+    fury_source(file.choose(), format = "spss") %>%
+    fury_exclude_missing("consent"),  # ← Add this
+  out_dir = "my_results"
+)
+```
+
+**Want to flag attention checks?** Add this instead:
+
+```r
+result <- fury_run(
+  fury_spec() %>%
+    fury_source(file.choose(), format = "spss") %>%
+    fury_flag_attention(
+      var = "attn_check_1",   # Your variable name
+      pass_values = 3,         # Correct answer
+      description = "Select 3"
+    ),
+  out_dir = "my_results"
+)
+```
+
+---
+
+## For Beginners Who Want More Control
 
 **You collected data in Qualtrics and need to:**
 1. Exclude participants who failed attention checks
 2. Separate pilot/pretest data from your main study
 3. Document participant flow for your journal submission
 
-Here's what to do:
+### Two Ways to Build Your Screening Rules:
 
-### Step 1: Install the package
+**Option A: R Code (Easier - Recommended for Beginners)**
 
 ```r
-# Install from GitHub (when available)
-remotes::install_github("phdemotions/fury")
+library(fury)
+
+# Build your rules step-by-step
+spec <- fury_spec() %>%
+  fury_source(file.choose(), format = "spss") %>%
+  fury_partition_pilot(
+    date_var = "StartDate",
+    start = "2024-01-01",
+    end = "2024-01-15"
+  ) %>%
+  fury_exclude_missing("consent") %>%
+  fury_flag_attention(
+    var = "attn_check_1",
+    pass_values = 3,
+    description = "Select 3"
+  )
+
+# Run it
+result <- fury_run(spec, out_dir = "my_audit")
 ```
 
-### Step 2: Export your Qualtrics data
+**Option B: YAML File (For Text File Lovers)**
 
-Export your Qualtrics survey as **SPSS (.sav)** format. This preserves item text and response labels.
-
-### Step 3: Tell fury what to do
-
-Create a simple text file (YAML format) that describes:
-- Which participants are pilots/pretests (by date or ID)
-- Which variables must be non-missing (e.g., consent)
-- Which variables are attention checks (and what the correct answers are)
-
-**Example screening rules:**
+Create a file called `screening_rules.yaml`:
 
 ```yaml
 data:
@@ -96,18 +170,16 @@ data:
     quality_flags:
       attention_checks:
         - var: "attn_check_1"
-          pass_values: [3]  # Correct answer is "3"
-          description: "Instructions said select 3"
+          pass_values: [3]
+          description: "Select 3"
           action: "flag"
 ```
 
-### Step 4: Run fury
+Then run:
 
 ```r
 library(fury)
-
-# Run screening and generate audit artifacts
-result <- fury_run("my_screening_rules.yaml", out_dir = "my_audit")
+result <- fury_run("screening_rules.yaml", out_dir = "my_audit")
 ```
 
 ### Step 5: Check the results

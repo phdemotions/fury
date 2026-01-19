@@ -24,11 +24,15 @@ navbar:
       href: index.html
     intro:
       text: Get Started
-      href: articles/novice-walkthrough.html
+      href: articles/absolute-beginner-5-minutes.html
     tutorials:
       text: Tutorials
       menu:
-      - text: "🎓 Complete Beginner's Guide (START HERE!)"
+      - text: "🚀 5-Minute Quick Start (COPY-PASTE THIS!)"
+        href: articles/absolute-beginner-5-minutes.html
+      - text: "---"
+      - text: "📚 Full Guides:"
+      - text: "🎓 Complete Beginner's Guide"
         href: articles/novice-walkthrough.html
       - text: "---"
       - text: "Step-by-Step Tutorials:"
@@ -134,6 +138,7 @@ articles:
 - title: "Get Started"
   navbar: ~
   contents:
+  - absolute-beginner-5-minutes
   - novice-walkthrough
 
 - title: "Step-by-Step Tutorials"

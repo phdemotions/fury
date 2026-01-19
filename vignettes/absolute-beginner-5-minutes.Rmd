@@ -1,0 +1,301 @@
+---
+title: "5-Minute Quick Start (Copy-Paste This!)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{5-Minute Quick Start (Copy-Paste This!)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Just Want to See It Work? Start Here!
+
+**This guide is for you if:**
+
+- You've never used fury before
+- You just want to see it work ONCE before reading the full documentation
+- You want to copy-paste working code right now
+
+**Time:** 5 minutes max
+
+---
+
+# Step 1: Install fury
+
+Copy-paste this into R:
+
+```{r install, eval=FALSE}
+install.packages("remotes")
+remotes::install_github("phdemotions/fury")
+install.packages("haven")  # Needed for SPSS files
+```
+
+**Wait for it to finish installing** (shows "DONE" when complete)
+
+---
+
+# Step 2: Copy-Paste This Code
+
+**This code uses test data included with fury**, so it will work immediately:
+
+```{r example, eval=FALSE}
+library(fury)
+
+# Use the test SPSS file that comes with fury
+test_file <- system.file("extdata", "test_minimal.sav", package = "fury")
+
+# Run fury in ONE command (no separate files needed!)
+result <- fury_run(
+  fury_spec() %>%
+    fury_source(test_file, format = "spss"),
+  out_dir = tempdir()
+)
+
+# See what fury created
+print(result)
+```
+
+**Copy the ENTIRE block above** (from `library(fury)` to `print(result)`) and paste into R.
+
+Press Enter.
+
+---
+
+# Step 3: Look at the Output
+
+You should see something like:
+
+```
+✓ Ingested 1 source(s)
+✓ Generated audit artifacts
+
+Audit directory: /var/folders/.../fury_audit/audit/
+
+Artifacts created:
+  - source_manifest.csv
+  - raw_codebook.csv
+  - session_info.txt
+```
+
+**What just happened?**
+
+- fury imported a test SPSS file
+- fury created a folder with output files
+- You can now open those files to see what fury does
+
+---
+
+# Step 4: See Your Output Files
+
+```{r view, eval=FALSE}
+# Find where fury put the files
+audit_dir <- result$artifacts$audit_dir
+print(paste("Files are in:", audit_dir))
+
+# Look at the codebook (list of variables)
+codebook <- read.csv(file.path(audit_dir, "raw_codebook.csv"))
+print(codebook)
+```
+
+**Open the folder** shown in the output (you can copy-paste the path into your file browser)
+
+---
+
+# What You Just Did
+
+✅ Installed fury
+✅ Ran it on test data
+✅ Generated audit artifacts
+✅ Saw what fury produces
+
+**Total time:** < 5 minutes
+
+---
+
+# Now Use YOUR Data
+
+The test file was just to show you it works. Here's how to use YOUR Qualtrics data:
+
+## Option 1: The Easy Way (Let R Find Your File)
+
+```{r your-data-easy, eval=FALSE}
+library(fury)
+
+# This opens a file picker - select your .sav file
+my_file <- file.choose()
+
+# Run fury on YOUR file
+result <- fury_run(
+  fury_spec() %>%
+    fury_source(my_file, format = "spss"),
+  out_dir = "my_results"  # Creates this folder in your working directory
+)
+
+# See results
+print(result)
+```
+
+**What's different?**
+- `file.choose()` opens a dialog box (no typing file paths!)
+- `out_dir = "my_results"` creates a folder you can easily find
+
+## Option 2: If You Know Your File Path
+
+```{r your-data-path, eval=FALSE}
+library(fury)
+
+# REPLACE this with your actual file path
+my_file <- "/Users/YourName/Downloads/MySurvey.sav"
+
+# Run fury
+result <- fury_run(
+  fury_spec() %>%
+    fury_source(my_file, format = "spss"),
+  out_dir = "my_results"
+)
+```
+
+**Tip:** On Windows, use forward slashes: `"C:/Users/YourName/Downloads/MySurvey.sav"`
+
+---
+
+# Common First-Time Problems
+
+## Problem: "Error: could not find function '%>%'"
+
+**Solution:** Add this line at the top:
+
+```{r fix-pipe, eval=FALSE}
+library(magrittr)  # This loads the %>% operator
+library(fury)
+```
+
+Or use fury's built-in version:
+
+```{r fix-pipe2, eval=FALSE}
+library(fury)
+
+# Use |> instead of %>%
+result <- fury_run(
+  fury_spec() |>
+    fury_source(my_file, format = "spss"),
+  out_dir = "my_results"
+)
+```
+
+## Problem: "Error: haven package not found"
+
+**Solution:**
+
+```{r fix-haven, eval=FALSE}
+install.packages("haven")
+```
+
+Then re-run your code.
+
+## Problem: "Error: file not found"
+
+**Solution:** Use `file.choose()` instead of typing the path:
+
+```{r fix-path, eval=FALSE}
+my_file <- file.choose()  # Click your file in the dialog box
+```
+
+---
+
+# What's Next?
+
+Now that you've seen fury work, you probably want to:
+
+1. **Exclude participants** (people who didn't consent, failed attention checks, etc.)
+   → See: [Tutorial 3: Apply Screening Rules](tutorial-screening.html)
+
+2. **Separate pilot from main study**
+   → See: [Tutorial 2: Track Pilot vs Main Study](tutorial-multi-source.html)
+
+3. **Understand all the output files**
+   → See: [Output Files Guide](output-files-guide.html)
+
+4. **Understand key concepts** (flagging vs. excluding, etc.)
+   → See: [Complete Beginner's Guide](novice-walkthrough.html)
+
+---
+
+# Cheat Sheet: The Absolute Minimum Code
+
+**For just importing your SPSS file with no screening:**
+
+```{r minimum, eval=FALSE}
+library(fury)
+
+result <- fury_run(
+  fury_spec() %>% fury_source(file.choose(), format = "spss"),
+  out_dir = "results"
+)
+
+# Open the results folder
+browseURL(result$artifacts$audit_dir)
+```
+
+**For excluding people with missing consent:**
+
+```{r minimum-exclude, eval=FALSE}
+library(fury)
+
+result <- fury_run(
+  fury_spec() %>%
+    fury_source(file.choose(), format = "spss") %>%
+    fury_exclude_missing("consent"),  # Replace "consent" with your variable name
+  out_dir = "results"
+)
+
+browseURL(result$artifacts$audit_dir)
+```
+
+**For flagging failed attention checks:**
+
+```{r minimum-flag, eval=FALSE}
+library(fury)
+
+result <- fury_run(
+  fury_spec() %>%
+    fury_source(file.choose(), format = "spss") %>%
+    fury_flag_attention(
+      var = "attn_check_1",      # Your attention check variable
+      pass_values = 3,            # Correct answer
+      description = "Select 3"
+    ),
+  out_dir = "results"
+)
+
+browseURL(result$artifacts$audit_dir)
+```
+
+---
+
+# Summary
+
+✅ **fury_run()** is the main function (does everything)
+
+✅ **fury_spec()** starts building your rules
+
+✅ **%>%** chains commands together (or use `|>`)
+
+✅ **fury_source()** tells fury where your data is
+
+✅ **file.choose()** avoids typing file paths
+
+✅ **out_dir** is where results go
+
+✅ **result$artifacts$audit_dir** is the folder with output files
+
+---
+
+**Done!** You've seen fury work. Now explore the full [beginner's guide](novice-walkthrough.html) to learn about screening rules, pilot partitioning, and Methods section reporting.
