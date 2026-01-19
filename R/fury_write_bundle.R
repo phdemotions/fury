@@ -48,5 +48,15 @@ fury_write_bundle <- function(result, out_dir = NULL) {
     )
   }
 
+  # Write screening artifacts if available in fury_metadata
+  if (!is.null(result$fury_metadata$screened_data) &&
+      !is.null(result$fury_metadata$screening_rules)) {
+    fury_write_screening_artifacts(
+      data = result$fury_metadata$screened_data,
+      rules = result$fury_metadata$screening_rules,
+      audit_dir = paths$audit
+    )
+  }
+
   invisible(paths$audit)
 }

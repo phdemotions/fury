@@ -170,3 +170,55 @@ fury_write_session_info <- function(audit_dir) {
 
   invisible(NULL)
 }
+
+#' Write Warnings Artifact
+#'
+#' Deterministic warnings log capturing risk states detected during screening.
+#' Warnings are persisted into audit bundle, not just console output.
+#'
+#' @param warnings_list List of warning data frames
+#' @param audit_dir Path to audit directory
+#' @return NULL (invisibly)
+#' @noRd
+fury_write_warnings <- function(warnings_list, audit_dir) {
+  if (length(warnings_list) == 0) {
+    # Write empty warnings file
+    warnings_df <- data.frame(
+      warning_id = character(0),
+      severity = character(0),
+      message = character(0),
+      related_artifact = character(0),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    warnings_df <- do.call(rbind, warnings_list)
+    warnings_df <- nicheCore::stable_order(warnings_df, cols = "warning_id")
+  }
+
+  out_path <- fs::path(audit_dir, "warnings.csv")
+  nicheCore::write_audit_csv(warnings_df, out_path)
+
+  invisible(NULL)
+}
+
+#' Write Decision Registry Artifact
+#'
+#' Deterministic decision registry documenting whether key partitioning,
+#' eligibility, and quality decisions were declared by the user.
+#' No inference; only observable facts from spec/recipe/data.
+#'
+#' @param decision_registry Data frame with decision keys and values
+#' @param audit_dir Path to audit directory
+#' @return NULL (invisibly)
+#' @noRd
+fury_write_decision_registry <- function(decision_registry, audit_dir) {
+  decision_registry <- nicheCore::stable_order(
+    decision_registry,
+    cols = "decision_key"
+  )
+
+  out_path <- fs::path(audit_dir, "decision_registry.csv")
+  nicheCore::write_audit_csv(decision_registry, out_path)
+
+  invisible(NULL)
+}

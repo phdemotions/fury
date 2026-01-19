@@ -129,6 +129,75 @@ test_that("fury package R/ code does not contain banned analysis tokens", {
 })
 
 
+test_that("screening artifacts use conservative non-evaluative language", {
+  # Test data
+  data <- data.frame(
+    response_id = 1:10,
+    age = c(25, NA, 30, 35, NA, 40, 45, 50, NA, 55)
+  )
+
+  screening_config <- list(
+    eligibility = list(
+      required_nonmissing = c("age"),
+      action = "exclude"
+    )
+  )
+
+  rules <- fury:::fury_compile_rules_(screening_config, data)
+  screened <- fury:::fury_screen(data, rules)
+
+  # Build all screening artifacts
+  screening_log <- fury:::fury_build_screening_log_(screened, rules)
+  consort_flow <- fury:::fury_build_consort_flow_(screened, rules)
+  consort_by_reason <- fury:::fury_build_consort_by_reason_(screened, rules)
+  screening_summary <- fury:::fury_build_screening_summary_(screened, rules)
+
+  # Combine all text from artifacts
+  all_text <- paste(
+    paste(screening_log$description, collapse = " "),
+    paste(consort_flow$description, collapse = " "),
+    paste(consort_by_reason$reason, collapse = " "),
+    paste(screening_summary$line_text, collapse = " ")
+  )
+
+  # Banned phrases indicating evaluative or conclusive language
+  banned_phrases <- c(
+    "final sample",
+    "cleaned data",
+    "clean data",
+    "validated",
+    "reliability",
+    "Cronbach",
+    "mediator",
+    "manipulation check",
+    "quality data",
+    "high quality",
+    "valid responses",
+    "reliable",
+    "passed screening",
+    "good data"
+  )
+
+  for (phrase in banned_phrases) {
+    expect_false(
+      grepl(phrase, all_text, ignore.case = TRUE),
+      label = paste("Screening artifacts must not contain banned phrase:", phrase)
+    )
+  }
+
+  # Required conservative language
+  expect_true(
+    grepl("Analysis-eligible", all_text) || grepl("analysis-eligible", all_text),
+    label = "Screening summary must use 'analysis-eligible' not 'final sample'"
+  )
+
+  expect_true(
+    grepl("declared", all_text, ignore.case = TRUE),
+    label = "Screening summary must acknowledge rules are 'declared' not validated"
+  )
+})
+
+
 test_that("all bundle writes occur only under temp directories", {
   # Filesystem safety test
   r_files <- list.files(

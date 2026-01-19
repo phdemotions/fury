@@ -81,6 +81,39 @@ Expected output:
 
 ---
 
+## Important concepts for participant screening
+
+### Flags do NOT remove cases
+
+**CRITICAL:** When you "flag" cases for quality issues (e.g., attention check failures, speeding), those cases are **marked** but **NOT removed** from your data.
+
+- **Flagging** identifies cases that may have quality issues
+- **Exclusion** removes cases from the analysis pool
+- If you want flagged cases removed, you must explicitly use an exclusion rule (set `action: "exclude"`)
+
+The audit artifacts will warn you if flagged cases are present in your analysis pool.
+
+### Pilot and pretest partitioning must be declared
+
+If you collected pilot or pretest data:
+
+- You **must** declare `partitioning` rules in your spec/recipe
+- If you omit partitioning rules, the audit bundle will explicitly state "No partitioning declared"
+- Pilots and pretests that are not declared may be silently included in your main analysis pool
+
+The `decision_registry.csv` artifact explicitly documents whether pilot/pretest partitions were declared.
+
+### Check the audit artifacts
+
+After running `fury`, examine these novice-friendly artifacts in the `audit/` directory:
+
+- **`screening_summary.csv`**: High-level overview of partitions, exclusions, and flags
+- **`decision_registry.csv`**: Explicit record of what was declared vs. not declared
+- **`warnings.csv`**: Risk states detected (e.g., flags in analysis pool, no partitioning declared)
+- **`consort_flow.csv`**: Sequential participant flow with clarifying notes
+
+---
+
 ## Exported functions
 
 - `fury_run(spec_path, out_dir)`: Novice-friendly entry point. Reads spec, builds recipe, executes ingestion.
