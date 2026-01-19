@@ -1,0 +1,675 @@
+---
+title: "Complete Beginner's Guide to fury"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Complete Beginner's Guide to fury}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Welcome! This Guide is For You If...
+
+- ✅ You're new to R (or have only used it a little bit)
+- ✅ You collected data in Qualtrics and exported an SPSS file
+- ✅ You need to document which participants you excluded and why
+- ✅ You're preparing a manuscript for journal submission
+- ✅ You want a clear audit trail for peer reviewers
+
+**You do NOT need to be an R expert to use this guide.**
+
+---
+
+# What is fury?
+
+`fury` is an R package that helps you:
+
+1. **Import your data** from Qualtrics (SPSS format)
+2. **Apply screening rules** (like excluding people who didn't consent)
+3. **Track what you did** in files that reviewers can check
+4. **Prepare your dataset** for analysis
+
+**What fury does NOT do:**
+
+- ❌ Does NOT run statistical tests (t-tests, ANOVA, regression, etc.)
+- ❌ Does NOT compute scale scores or reverse-code items
+- ❌ Does NOT check reliability (Cronbach's alpha, factor analysis, etc.)
+- ❌ Does NOT create APA-formatted tables or figures
+
+Think of `fury` as the **data preparation** step. You'll use other tools (or other R packages) for the actual analysis.
+
+---
+
+# Key Concepts You Need to Understand
+
+## 🔑 Concept 1: Flagging vs. Excluding (VERY IMPORTANT!)
+
+This is the **#1 mistake** beginners make with `fury`.
+
+### Flagging = Marking (Participants Stay In Your Data)
+
+When you **flag** someone, you're putting a note on their data that says "hey, this person failed an attention check" BUT **they are still in your dataset**.
+
+**Example:**
+```
+Participant 42 failed the attention check
+→ fury adds a column: attn_check_failed = TRUE
+→ Participant 42 is STILL in your data
+→ You decide later whether to remove them
+```
+
+**Use flagging when:** You want to keep participants for sensitivity analysis (testing whether results change if you include/exclude them).
+
+### Excluding = Removing (Participants Are Gone)
+
+When you **exclude** someone, they are **removed from your dataset entirely**.
+
+**Example:**
+```
+Participant 99 did not consent
+→ fury removes Participant 99
+→ They do NOT appear in your final dataset
+→ This cannot be undone
+```
+
+**Use excluding when:** You have strict eligibility criteria (e.g., must have consented, must be 18+).
+
+### How to Choose?
+
+| Situation | Use Flagging or Excluding? |
+|-----------|----------------------------|
+| Participant did not consent | **Exclude** (ineligible) |
+| Participant is under 18 | **Exclude** (ineligible) |
+| Participant failed attention check | **Flag** (might want to analyze with/without them) |
+| Participant answered very quickly | **Flag** (might be valid data) |
+| Participant left some questions blank | **Flag** (missing data is common) |
+
+**Golden rule:** When in doubt, use **flagging** (you can always exclude flagged people later).
+
+---
+
+## 🔑 Concept 2: Pilot vs. Main Study
+
+If you collected data in two phases (a small pilot first, then your main study), you need to tell `fury` which participants are from which phase.
+
+**Why does this matter?**
+
+- Reviewers want to know if you ran a pilot
+- You might want to analyze pilot and main data separately
+- Some journals require you to report pilot results separately
+
+**What happens if you DON'T declare a pilot?**
+
+- `fury` assumes ALL your data is from the main study
+- `fury` will create a file that says "Pilot partition present: No"
+- You can still use `fury`—this is just documenting what you did
+
+---
+
+## 🔑 Concept 3: Analysis-Eligible Dataset (Not "Final" Dataset)
+
+`fury` creates what we call an **"analysis-eligible dataset per declared rules"**.
+
+**What does that mean in plain English?**
+
+- Your dataset has had the rules YOU declared applied to it
+- People you said to exclude are excluded
+- People you said to flag are flagged
+- But YOU still need to make more decisions (outliers, missing data, etc.)
+
+**Why don't we call it the "final dataset"?**
+
+Because it's not final! You still need to:
+
+- Decide what to do with flagged participants
+- Handle missing data
+- Check for outliers
+- Maybe exclude more people based on your analysis
+
+`fury` prepares your data. **You** finish it.
+
+---
+
+# Installing fury
+
+## Step 1: Install Required Packages
+
+Open R or RStudio and run these commands:
+
+```r
+# Install remotes (helps you install from GitHub)
+install.packages("remotes")
+
+# Install fury from GitHub
+remotes::install_github("phdemotions/fury")
+
+# Install haven (needed to read SPSS files)
+install.packages("haven")
+```
+
+**What is GitHub?** A website where programmers share code. The `fury` package lives there.
+
+**What is SPSS?** A statistics program. Qualtrics can export data in SPSS format, which preserves your question text and answer labels.
+
+## Step 2: Load fury
+
+Every time you start a new R session, you need to load `fury`:
+
+```{r setup}
+library(fury)
+```
+
+---
+
+# Tutorial 1: Import One SPSS File (No Exclusions)
+
+**Scenario:** You just want to import your Qualtrics data and see what variables you have.
+
+## Step 1: Get Your SPSS File
+
+1. Log into Qualtrics
+2. Go to your survey
+3. Click "Data & Analysis"
+4. Click "Export & Import" → "Export Data"
+5. Choose **"SPSS"** format
+6. Download the file (it will be named something like `MySurvey.sav`)
+7. Remember where you saved it!
+
+## Step 2: Create a Spec File
+
+A **"spec"** is a file that tells `fury` what to do. Think of it like a recipe.
+
+**Option A: Using R Code (Beginner-Friendly)**
+
+```{r create-spec-simple, eval=FALSE}
+library(fury)
+
+# Tell fury where your SPSS file is
+# REPLACE THIS with your actual file path!
+my_data_file <- "C:/Users/YourName/Downloads/MySurvey.sav"
+
+# Create the spec (recipe)
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss")
+
+# Save the spec to a file
+fury_to_yaml(spec, "my_screening_rules.yaml")
+```
+
+**What just happened?**
+
+- `fury_spec()` starts creating your recipe
+- `fury_source()` tells fury where your data file is
+- `fury_to_yaml()` saves your recipe to a text file
+
+**What is YAML?** A simple text file format. It's human-readable, so you can open `my_screening_rules.yaml` in Notepad and see exactly what it says.
+
+**Option B: Write YAML Directly (For Text File Lovers)**
+
+Create a file called `my_screening_rules.yaml` and type this:
+
+```yaml
+data:
+  sources:
+    - file: "C:/Users/YourName/Downloads/MySurvey.sav"
+      format: "spss"
+```
+
+**Tip:** Use forward slashes (`/`) in file paths, not backslashes (`\`).
+
+## Step 3: Run fury
+
+```{r run-fury-simple, eval=FALSE}
+library(fury)
+
+# Run fury on your spec file
+result <- fury_run("my_screening_rules.yaml", out_dir = "my_audit")
+```
+
+**What just happened?**
+
+- `fury` read your SPSS file
+- `fury` created several output files in a folder called `my_audit`
+- `result` is an object that contains information about what `fury` did
+
+## Step 4: Look at Your Output Files
+
+Open the folder `my_audit/audit/` on your computer. You'll see these files:
+
+### File 1: `raw_codebook.csv`
+
+**What it is:** A list of all the variables (questions) in your dataset.
+
+**Why it matters:** This helps you understand what data you have.
+
+**Open it in Excel and look for these columns:**
+
+- `variable`: The variable name (e.g., `Q1`, `Q2`, `age`)
+- `label`: The question text (e.g., "How satisfied are you?")
+- `value_labels`: The answer options (e.g., "1 = Very Dissatisfied, 2 = Dissatisfied...")
+
+**Example:**
+```{r show-codebook, eval=FALSE}
+# Read the codebook in R
+codebook <- read.csv("my_audit/audit/raw_codebook.csv")
+
+# Look at first few rows
+head(codebook)
+```
+
+### File 2: `source_manifest.csv`
+
+**What it is:** A record of which files `fury` imported.
+
+**Why it matters:** If you import multiple files (pilot + main), this tracks them all.
+
+### File 3: `session_info.txt`
+
+**What it is:** A record of which version of R and which packages you used.
+
+**Why it matters:** Reviewers can reproduce your exact setup.
+
+---
+
+# Tutorial 2: Exclude People Who Didn't Consent
+
+**Scenario:** You want to remove anyone who clicked "I do not consent" from your dataset.
+
+## Step 1: Find Your Consent Variable
+
+Open your `raw_codebook.csv` and look for the consent question. Let's say it's called `consent` and the values are:
+
+- `1 = I consent`
+- `0 = I do not consent`
+
+## Step 2: Add an Exclusion Rule
+
+**Option A: Using R Code**
+
+```{r exclude-consent, eval=FALSE}
+library(fury)
+
+my_data_file <- "C:/Users/YourName/Downloads/MySurvey.sav"
+
+# Create spec with exclusion rule
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+  fury_exclude_missing("consent")  # Remove anyone with missing consent
+
+# Save the spec
+fury_to_yaml(spec, "my_screening_rules.yaml")
+
+# Run fury
+result <- fury_run("my_screening_rules.yaml", out_dir = "my_audit")
+```
+
+**What `fury_exclude_missing()` does:**
+
+- Looks at the `consent` variable
+- If someone is missing a value (they didn't answer), they are **excluded**
+- Excluded people do NOT appear in your final dataset
+
+**Option B: Write YAML Directly**
+
+Edit your `my_screening_rules.yaml` file:
+
+```yaml
+data:
+  sources:
+    - file: "C:/Users/YourName/Downloads/MySurvey.sav"
+      format: "spss"
+
+  screening:
+    eligibility:
+      required_nonmissing: ["consent"]
+      action: "exclude"
+```
+
+**What this says:** "The variable `consent` must NOT be missing. If it's missing, exclude that person."
+
+## Step 3: Check the Results
+
+After running `fury`, open these files:
+
+### `screening_summary.csv`
+
+This shows you how many people were excluded:
+
+```
+N enrolled: 100
+N excluded (missing consent): 5
+N analysis-eligible: 95
+```
+
+### `consort_flow.csv`
+
+This is formatted for a **CONSORT flow diagram** (the flowchart journals often require showing how many participants you excluded and why).
+
+**Example:**
+```
+stage               | n   | description
+--------------------|-----|-------------------
+enrolled            | 100 | Total enrolled
+after_eligibility   | 95  | After excluding missing consent
+analysis_eligible   | 95  | Analysis-eligible per declared rules
+```
+
+---
+
+# Tutorial 3: Flag (But Don't Remove) Failed Attention Checks
+
+**Scenario:** You had an attention check question where the correct answer was "3". You want to **mark** people who got it wrong, but NOT remove them yet (you'll decide later).
+
+## Step 1: Find Your Attention Check Variable
+
+Let's say your attention check question is called `attn_check_1` and the correct answer is `3`.
+
+## Step 2: Add a Flag Rule
+
+**Option A: Using R Code**
+
+```{r flag-attention, eval=FALSE}
+library(fury)
+
+my_data_file <- "C:/Users/YourName/Downloads/MySurvey.sav"
+
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+  fury_exclude_missing("consent") %>%  # Still exclude non-consenters
+  fury_flag_attention(
+    var = "attn_check_1",
+    pass_values = 3,  # Correct answer is 3
+    description = "Instructions said select 3"
+  )
+
+fury_to_yaml(spec, "my_screening_rules.yaml")
+
+result <- fury_run("my_screening_rules.yaml", out_dir = "my_audit")
+```
+
+**What `fury_flag_attention()` does:**
+
+- Looks at `attn_check_1`
+- If the value is NOT 3, that person is **flagged**
+- Flagged people STAY in your dataset (they're just marked)
+
+**Option B: Write YAML Directly**
+
+```yaml
+data:
+  sources:
+    - file: "C:/Users/YourName/Downloads/MySurvey.sav"
+      format: "spss"
+
+  screening:
+    eligibility:
+      required_nonmissing: ["consent"]
+      action: "exclude"
+
+    quality_flags:
+      attention_checks:
+        - var: "attn_check_1"
+          pass_values: [3]
+          description: "Instructions said select 3"
+          action: "flag"
+```
+
+**Notice:** `action: "flag"` (not `"exclude"`).
+
+## Step 3: Check for Warnings
+
+After running `fury`, open `warnings.csv`. You might see:
+
+```
+message
+--------------------------------------------
+7 participants flagged for attention check failures but remain in analysis pool. Review before proceeding.
+```
+
+**What this means:** 7 people failed the attention check, but they're STILL in your data. You need to decide what to do with them.
+
+**Your options:**
+
+1. **Keep them** (if you think the attention check wasn't important)
+2. **Exclude them** (change `action: "flag"` to `action: "exclude"` and re-run)
+3. **Run your analysis twice** (once with them, once without) to see if it changes your results
+
+---
+
+# Tutorial 4: Separate Pilot Data from Main Study
+
+**Scenario:** You ran a pilot study in January (Jan 1-15) and then your main study in February (Feb 1-28). You want to keep them separate.
+
+## Step 1: Find Your Date Variable
+
+Your Qualtrics data probably has a variable called `StartDate` or `RecordedDate` that shows when each person took the survey.
+
+## Step 2: Declare Your Pilot Partition
+
+**Option A: Using R Code**
+
+```{r partition-pilot, eval=FALSE}
+library(fury)
+
+my_data_file <- "C:/Users/YourName/Downloads/MySurvey.sav"
+
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+  fury_partition_pilot(
+    date_var = "StartDate",
+    start = "2024-01-01",
+    end = "2024-01-15"
+  ) %>%
+  fury_exclude_missing("consent")
+
+fury_to_yaml(spec, "my_screening_rules.yaml")
+
+result <- fury_run("my_screening_rules.yaml", out_dir = "my_audit")
+```
+
+**What `fury_partition_pilot()` does:**
+
+- Looks at the `StartDate` variable
+- Anyone who responded between Jan 1-15 is labeled as "pilot"
+- Anyone who responded after Jan 15 is labeled as "main"
+- **Nobody is removed**—they're just labeled
+
+**Option B: Write YAML Directly**
+
+```yaml
+data:
+  sources:
+    - file: "C:/Users/YourName/Downloads/MySurvey.sav"
+      format: "spss"
+
+  screening:
+    partitioning:
+      pilot:
+        by: "date_range"
+        date_var: "StartDate"
+        start: "2024-01-01"
+        end: "2024-01-15"
+```
+
+## Step 3: Check the Decision Registry
+
+Open `decision_registry.csv`. You should see:
+
+```
+decision_type           | value
+------------------------|------
+Pilot partition present | Yes
+```
+
+**Why this matters:** This file documents what you declared vs. what you didn't declare. Reviewers can see exactly what decisions you made.
+
+---
+
+# What Files Should You Share with Reviewers?
+
+When you submit your manuscript, include these files as **supplementary materials**:
+
+1. ✅ **`my_screening_rules.yaml`** — Shows exactly what rules you applied
+2. ✅ **`decision_registry.csv`** — Shows what you declared (pilot? exclusions? flags?)
+3. ✅ **`screening_summary.csv`** — Shows how many people were excluded and why
+4. ✅ **`consort_flow.csv`** — Data for your participant flow diagram
+5. ✅ **`source_manifest.csv`** — Shows which data files you imported
+6. ✅ **`session_info.txt`** — Shows which version of R and packages you used
+
+**How to write about this in your Methods section:**
+
+> "Data were screened using the fury R package (Gonzales, 2026). Participants were excluded if they did not provide consent (n = 5). Participants who failed the attention check were flagged but retained for sensitivity analysis (n = 7). All screening rules were preregistered and are available in the supplementary materials (my_screening_rules.yaml). A complete audit trail, including a participant flow diagram (CONSORT format), is also available in the supplementary materials."
+
+---
+
+# Common Questions
+
+## Q: Can fury compute Cronbach's alpha or check reliability?
+
+**A: No.** `fury` only imports data and applies screening rules. You need to use other packages (like `psych`) for reliability analysis.
+
+## Q: Can fury reverse-code my items?
+
+**A: No.** `fury` does NOT transform your data. You'll do that in your analysis script.
+
+## Q: Can fury run my t-test or ANOVA?
+
+**A: No.** `fury` prepares your data. You run the statistical tests separately.
+
+## Q: What if I realize I made a mistake in my screening rules?
+
+**A: That's okay!** Just edit your YAML file and re-run `fury`. You'll get a new set of output files.
+
+## Q: What's the difference between flagging and excluding again?
+
+**A: See "Key Concepts" above.** This is THE most important thing to understand.
+
+---
+
+# Troubleshooting
+
+## Problem: "Error: haven package not found"
+
+**Solution:** Install haven:
+
+```r
+install.packages("haven")
+```
+
+## Problem: "Error: file not found"
+
+**Solution:** Check your file path. Common mistakes:
+
+- Using backslashes (`\`) instead of forward slashes (`/`)
+- Forgetting to include the full path (e.g., just `MySurvey.sav` instead of `C:/Users/YourName/Downloads/MySurvey.sav`)
+- Misspelling the file name
+
+**Tip:** In R, you can use `file.choose()` to open a dialog box and select your file:
+
+```r
+my_file <- file.choose()
+print(my_file)  # This shows you the correct path
+```
+
+## Problem: "I don't understand the output files"
+
+**Solution:** Start with these two files (in this order):
+
+1. **`warnings.csv`** — Tells you if something looks wrong
+2. **`screening_summary.csv`** — Quick overview of what happened
+
+If `warnings.csv` is empty, you're probably fine!
+
+---
+
+# Next Steps
+
+Now that you understand `fury`, here's what to do next:
+
+1. ✅ **Import your data** using Tutorial 1
+2. ✅ **Apply screening rules** using Tutorials 2-4
+3. ✅ **Check the output files** to make sure everything looks right
+4. ✅ **Compute your scale scores** (in a separate R script, NOT in fury)
+5. ✅ **Run your statistical analyses** (using other R packages or SPSS)
+6. ✅ **Create APA tables and figures** (using other R packages)
+
+**Remember:** `fury` is just the **first step** (data preparation). You still need to do your analysis!
+
+---
+
+# Summary: The Big Picture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Step 1: Collect Data in Qualtrics                           │
+│         ↓                                                    │
+│ Step 2: Export as SPSS (.sav file)                          │
+│         ↓                                                    │
+│ Step 3: Use fury to import and screen data                  │
+│         • Apply exclusion rules (eligibility)                │
+│         • Apply flag rules (quality checks)                  │
+│         • Separate pilot from main study                     │
+│         ↓                                                    │
+│ Step 4: Review fury's output files                          │
+│         • warnings.csv (any problems?)                       │
+│         • screening_summary.csv (how many excluded?)         │
+│         • consort_flow.csv (for Methods section)             │
+│         ↓                                                    │
+│ Step 5: Make final decisions about flagged participants     │
+│         ↓                                                    │
+│ Step 6: Compute scale scores (separate R script)            │
+│         ↓                                                    │
+│ Step 7: Run your statistical analyses                       │
+│         ↓                                                    │
+│ Step 8: Create APA tables and figures                       │
+│         ↓                                                    │
+│ Step 9: Write your manuscript                               │
+│         ↓                                                    │
+│ Step 10: Share fury output files as supplementary materials │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**fury handles Steps 3-4. You handle the rest!**
+
+---
+
+# Important Reminders
+
+## ⚠️ fury does NOT:
+
+- Clean your data
+- Compute scores
+- Check reliability
+- Run statistical tests
+- Create a "final" dataset
+
+## ✅ fury DOES:
+
+- Import your SPSS file
+- Apply the screening rules YOU declare
+- Document what you did
+- Create files for your Methods section
+- Preserve an audit trail for reviewers
+
+## 🎯 The Goal:
+
+**Create an "analysis-eligible dataset per declared rules"** — meaning your data is ready for YOU to analyze (after you make final decisions about flagged participants, missing data, outliers, etc.).
+
+---
+
+# Getting Help
+
+- 📖 **Read the main README:** `README.md` in the fury package
+- 📋 **Check the examples:** `inst/examples/` folder
+- 🐛 **Report bugs:** https://github.com/phdemotions/fury/issues
+- 📧 **Contact the maintainer:** Josh Gonzales (see package documentation)
+
+---
+
+**Good luck with your research!** 🎉
