@@ -1,0 +1,422 @@
+---
+title: "Tutorial 2: Track Pilot vs Main Study"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Tutorial 2: Track Pilot vs Main Study}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# What You'll Learn
+
+In this tutorial, you'll learn how to:
+
+- ✅ Separate pilot data from main study data
+- ✅ Track provenance (what data came from where)
+- ✅ Document your decisions for peer reviewers
+
+**Time required:** 15 minutes
+
+**Prerequisites:** You completed [Tutorial 1: Import SPSS Data](tutorial-sav-ingestion.html)
+
+---
+
+# Why This Matters
+
+**Scenario:** You ran a pilot study in January to test your survey, then collected your main study data in February.
+
+**Problem:** Both datasets are in the same Qualtrics file (or separate files you want to combine).
+
+**Solution:** fury lets you **partition** (label) your data so pilot and main study are kept separate.
+
+**Why peer reviewers care:**
+
+- They want to know if you ran a pilot
+- They want to see pilot results reported separately
+- They want to verify you didn't change your measures between pilot and main
+
+---
+
+# Key Concept: Partitioning vs. Excluding
+
+⚠️ **This is important!**
+
+## Partitioning = Labeling (Participants Stay In)
+
+When you **partition** data into "pilot" and "main":
+
+- Pilot participants get a label: `partition = "pilot"`
+- Main study participants get a label: `partition = "main"`
+- **Nobody is removed from your dataset**
+
+**Think of it like:** Putting sticky notes on your data that say "this is pilot" vs. "this is main"
+
+## Excluding = Removing (Participants Are Gone)
+
+This is different from **excluding** (which we'll cover in Tutorial 3):
+
+- Excluded participants are **removed** from your dataset
+- They don't appear in your analysis at all
+
+**Partition first, exclude later** (if you need to exclude pilots from analysis).
+
+---
+
+# Step 1: Find Your Date Variable
+
+Your Qualtrics data probably has one of these variables:
+
+- `StartDate` — When the participant started the survey
+- `RecordedDate` — When the participant finished the survey
+- `EndDate` — Same as RecordedDate
+
+**To find it:** Look at your `raw_codebook.csv` from Tutorial 1.
+
+**Example:**
+```
+variable      | label
+--------------|------------------------
+StartDate     | Start Date
+RecordedDate  | End Date
+```
+
+---
+
+# Step 2: Decide Your Pilot Date Range
+
+**Example scenario:**
+
+- Pilot: January 1-15, 2024
+- Main study: February 1-28, 2024
+
+**What if I have IDs instead of dates?**
+
+You can also partition by participant ID list (see "Advanced Options" below).
+
+---
+
+# Step 3: Add Pilot Partition to Your Spec
+
+## Option A: Using R Code (Recommended)
+
+```{r add-pilot-r}
+library(fury)
+
+# Your data file path
+my_data_file <- "C:/Users/YourName/Downloads/MySurvey.sav"
+
+# Create spec with pilot partition
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+  fury_partition_pilot(
+    date_var = "StartDate",
+    start = "2024-01-01",
+    end = "2024-01-15"
+  )
+
+# Save to YAML
+fury_to_yaml(spec, "my_screening_spec.yaml")
+```
+
+**What `fury_partition_pilot()` does:**
+
+- Looks at the `StartDate` variable
+- Anyone who responded between Jan 1-15 → labeled as "pilot"
+- Everyone else → labeled as "main"
+
+## Option B: Write YAML Directly
+
+Edit your `my_screening_spec.yaml`:
+
+```yaml
+data:
+  sources:
+    - file: "C:/Users/YourName/Downloads/MySurvey.sav"
+      format: "spss"
+
+  screening:
+    partitioning:
+      pilot:
+        by: "date_range"
+        date_var: "StartDate"
+        start: "2024-01-01"
+        end: "2024-01-15"
+```
+
+---
+
+# Step 4: Run fury
+
+```{r run-fury-pilot}
+result <- fury_run("my_screening_spec.yaml", out_dir = "my_audit")
+```
+
+---
+
+# Step 5: Check the Provenance Artifacts
+
+fury creates several files to document your partitioning decision.
+
+## File 1: `decision_registry.csv` ⭐ (Check this first!)
+
+**What it is:** A record of what you declared vs. didn't declare.
+
+**Open it and look for:**
+
+```
+decision_type           | value
+------------------------|------
+Pilot partition present | Yes
+```
+
+**Why it matters:** This proves to reviewers that you explicitly declared a pilot partition.
+
+**If you DON'T see "Yes":**
+
+- You forgot to add `fury_partition_pilot()`
+- Check your spec file and re-run
+
+## File 2: `screening_summary.csv`
+
+**What it is:** Summary statistics about your partitions.
+
+**Example:**
+```
+partition | n   | description
+----------|-----|-------------------
+pilot     | 25  | Pilot study (Jan 1-15)
+main      | 175 | Main study (after pilot)
+```
+
+## File 3: `source_manifest.csv`
+
+**What it is:** Record of which files you imported.
+
+**Example:**
+```
+source_id | file         | format | n_rows | timestamp
+----------|--------------|--------|--------|-------------------
+1         | MySurvey.sav | spss   | 200    | 2024-01-19 10:30:45
+```
+
+**Why it matters:** If you later combine multiple files, this tracks them all.
+
+---
+
+# Understanding the Output
+
+## What Happened to Your Data?
+
+After partitioning:
+
+✅ **All participants are still in your dataset**
+
+✅ **A new column was added:** `partition` (or similar)
+
+✅ **Values in that column:**
+- `"pilot"` for pilot participants
+- `"main"` for main study participants
+
+**Your data is NOT filtered or removed.**
+
+## What If I Want to Exclude Pilots from Analysis?
+
+**fury does NOT do this automatically.** You have two options:
+
+### Option 1: Exclude pilots in your analysis script
+
+```r
+# Later, in your analysis script
+library(dplyr)
+
+# Filter to main study only
+main_data <- my_data %>%
+  filter(partition == "main")
+
+# Run your analysis on main_data
+```
+
+### Option 2: Analyze pilot and main separately
+
+```r
+# Pilot analysis
+pilot_results <- my_data %>%
+  filter(partition == "pilot") %>%
+  summarize(...)
+
+# Main analysis
+main_results <- my_data %>%
+  filter(partition == "main") %>%
+  summarize(...)
+```
+
+---
+
+# Advanced: Multiple Partitions
+
+You can have BOTH pilot and pretest:
+
+```{r multiple-partitions}
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+  fury_partition_pilot(
+    date_var = "StartDate",
+    start = "2024-01-01",
+    end = "2024-01-15"
+  ) %>%
+  fury_partition_pretest(
+    date_var = "StartDate",
+    start = "2024-01-20",
+    end = "2024-01-25"
+  )
+```
+
+**Result:**
+
+- Jan 1-15 → `partition = "pilot"`
+- Jan 20-25 → `partition = "pretest"`
+- After Jan 25 → `partition = "main"`
+
+---
+
+# Advanced: Partition by ID List (Instead of Dates)
+
+If you have a list of pilot participant IDs:
+
+**YAML:**
+```yaml
+screening:
+  partitioning:
+    pilot:
+      by: "id_list"
+      id_var: "participant_id"
+      ids: [1, 2, 3, 4, 5, 10, 11, 12]
+```
+
+**R Code:**
+```{r partition-by-id}
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+  fury_partition_pilot(
+    id_var = "participant_id",
+    ids = c(1, 2, 3, 4, 5, 10, 11, 12)
+  )
+```
+
+---
+
+# Writing About This in Your Methods Section
+
+Here's a template you can adapt:
+
+> "Data were collected in two phases. A pilot study (N = 25) was conducted between January 1-15, 2024 to test the survey instrument. Following minor revisions to wording, the main study (N = 175) was conducted between February 1-28, 2024. Data were ingested and partitioned using the fury R package (Gonzales, 2026), which generated provenance artifacts documenting the partitioning decision (see decision_registry.csv in supplementary materials). Pilot and main study data were analyzed separately."
+
+**Which files to share as supplementary materials:**
+
+1. ✅ `my_screening_spec.yaml` — Shows your partitioning rules
+2. ✅ `decision_registry.csv` — Proves you declared a pilot
+3. ✅ `screening_summary.csv` — Shows pilot vs main counts
+4. ✅ `source_manifest.csv` — Documents data provenance
+
+---
+
+# What If I Didn't Run a Pilot?
+
+**That's totally fine!** Just don't call `fury_partition_pilot()`.
+
+fury will document this:
+
+**In `decision_registry.csv`:**
+```
+decision_type           | value
+------------------------|------
+Pilot partition present | No
+```
+
+**This is NOT an error.** It's just documenting what you did (or didn't) do.
+
+---
+
+# Troubleshooting
+
+## Problem: "All my data is labeled 'main' even though I ran a pilot"
+
+**Possible causes:**
+
+1. Date range doesn't match your data
+2. Date variable name is wrong (`RecordedDate` vs `StartDate`)
+3. Date format doesn't match
+
+**Solution:** Check your raw data to see actual dates:
+
+```{r check-dates}
+# Read your raw data
+library(haven)
+raw_data <- read_sav("C:/Users/YourName/Downloads/MySurvey.sav")
+
+# Look at date range
+summary(raw_data$StartDate)
+```
+
+## Problem: "I have two separate SPSS files (pilot.sav and main.sav)"
+
+**Solution:** Import both files separately, then combine them:
+
+```yaml
+data:
+  sources:
+    - file: "pilot.sav"
+      format: "spss"
+    - file: "main.sav"
+      format: "spss"
+```
+
+fury will track both in `source_manifest.csv`.
+
+---
+
+# Next Steps
+
+Now that you've partitioned your data, you're ready to:
+
+📖 **[Tutorial 3: Apply Screening Rules](tutorial-screening.html)** — Exclude non-consenters and flag attention checks
+
+📖 **[Output Files Guide](output-files-guide.html)** — Deep dive into all fury output files
+
+📖 **[Methods Section Guide](methods-section-guide.html)** — More templates for writing your paper
+
+---
+
+# Summary
+
+✅ **What you did:**
+
+1. Declared pilot partition by date range
+2. Ran `fury_run()` to apply partitioning
+3. Checked `decision_registry.csv` to verify declaration
+
+✅ **What you got:**
+
+- Pilot participants labeled as `partition = "pilot"`
+- Main participants labeled as `partition = "main"`
+- Provenance artifacts for peer review
+
+✅ **What fury did NOT do:**
+
+- Did NOT exclude pilot participants (they're still in your data)
+- Did NOT run separate analyses (you do that later)
+- Did NOT change any of your data values
+
+**Partitioning = labeling, not removing.**
+
+---
+
+**Ready for the next tutorial?** → [Tutorial 3: Apply Screening Rules](tutorial-screening.html)

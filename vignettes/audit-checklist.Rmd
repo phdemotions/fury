@@ -1,0 +1,98 @@
+---
+title: "Audit Checklist (For Maintainers)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Audit Checklist (For Maintainers)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Purpose
+
+This checklist is for **package maintainers and peer reviewers** who want to verify that `fury` meets quality standards.
+
+**For regular users:** See the [Complete Beginner's Guide](novice-walkthrough.html) instead.
+
+---
+
+# Quick Start
+
+## Run the Automated Audit
+
+```{bash, eval=FALSE}
+# From package root directory
+Rscript tools/run_audit.R
+```
+
+**Expected output:**
+```
+✅ AUDIT PASSED
+All automated checks passed.
+```
+
+## Run the Test Suite
+
+```{r, eval=FALSE}
+devtools::test()
+```
+
+---
+
+# Full Documentation
+
+For the complete 28-point audit checklist, see:
+
+**`inst/audit/AUDIT_CHECKLIST.md`**
+
+This document contains:
+
+- Detailed PASS/FAIL criteria for each check
+- Commands to run for manual verification
+- Expected artifacts and failure conditions
+- Six audit sections:
+  1. Novice Walkthrough Audit
+  2. SPSS .sav Ingestion Audit
+  3. Partitioning + Screening + CONSORT Audit
+  4. Methods Write-Up Readiness Audit
+  5. Silent Misuse Audit
+  6. Determinism Audit
+
+---
+
+# What the Audit Verifies
+
+✅ **Novice usability** — Package is usable for researchers new to R
+
+✅ **SPSS ingestion** — `.sav` files can be imported with tutorials
+
+✅ **Conservative language** — No inflated claims ("final dataset", "cleaned data")
+
+✅ **Methods artifacts** — All required files for peer review are generated
+
+✅ **Determinism** — Same inputs → same outputs
+
+✅ **Governance compliance** — Ecosystem contracts are obeyed
+
+---
+
+# Quick Reference
+
+| Check Category | Automated? | Location |
+|----------------|------------|----------|
+| README quality | ✅ Yes | `tools/run_audit.R` |
+| SPSS fixtures | ✅ Yes | `tools/run_audit.R` |
+| Artifact generation | ✅ Yes | `tools/run_audit.R` |
+| Conservative language | ✅ Yes | `tools/run_audit.R` + `tests/` |
+| Determinism | ✅ Yes | `tools/run_audit.R` + `tests/` |
+| Tutorial completeness | ⚠️ Partial | Manual review required |
+
+---
+
+**For full details:** See `inst/audit/AUDIT_CHECKLIST.md` in the package source.

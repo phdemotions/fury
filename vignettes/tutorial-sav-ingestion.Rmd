@@ -1,0 +1,354 @@
+---
+title: "Tutorial 1: Import SPSS Data (.sav)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Tutorial 1: Import SPSS Data (.sav)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# What You'll Learn
+
+In this tutorial, you'll learn how to:
+
+- ✅ Import an SPSS `.sav` file from Qualtrics
+- ✅ Generate a raw codebook showing your variables
+- ✅ Understand what fury does (and doesn't) do with your data
+
+**Time required:** 10 minutes
+
+**Prerequisites:** You exported your Qualtrics survey as SPSS format
+
+---
+
+# Step 1: Export Your Data from Qualtrics
+
+If you haven't already:
+
+1. Log into Qualtrics
+2. Go to your survey → "Data & Analysis"
+3. Click "Export & Import" → "Export Data"
+4. Choose **"SPSS"** format (not CSV!)
+5. Download the file (it will be named something like `MySurvey.sav`)
+
+**Why SPSS format?**
+
+SPSS files preserve:
+- Question text (variable labels)
+- Answer option text (value labels)
+- Original variable names
+
+This makes your codebook much more readable!
+
+---
+
+# Step 2: Install fury (One-Time Setup)
+
+If you haven't installed fury yet:
+
+```{r install}
+# Install remotes package (helps install from GitHub)
+install.packages("remotes")
+
+# Install fury from GitHub
+remotes::install_github("phdemotions/fury")
+
+# Install haven (required to read SPSS files)
+install.packages("haven")
+```
+
+---
+
+# Step 3: Load fury
+
+Every time you start a new R session:
+
+```{r setup}
+library(fury)
+```
+
+**Check that haven is available:**
+
+```{r check-haven}
+if (!requireNamespace("haven", quietly = TRUE)) {
+  stop("Please install haven: install.packages('haven')")
+}
+```
+
+---
+
+# Step 4: Create Your Spec File
+
+A "spec" is a recipe that tells fury what to do. Here are two ways to create one:
+
+## Option A: Using R Code (Recommended for Beginners)
+
+```{r create-spec-r}
+# REPLACE THIS with your actual file path!
+my_data_file <- "C:/Users/YourName/Downloads/MySurvey.sav"
+
+# Create the spec
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss")
+
+# Save to a YAML file
+fury_to_yaml(spec, "my_screening_spec.yaml")
+```
+
+**What just happened?**
+
+- `fury_spec()` → Start building your recipe
+- `fury_source()` → Tell fury where your data file is
+- `fury_to_yaml()` → Save the recipe to a text file
+
+**Tip:** Don't know your file path? Use this:
+
+```{r find-file, eval=FALSE}
+my_data_file <- file.choose()  # Opens a file picker dialog
+print(my_data_file)  # Shows the full path
+```
+
+## Option B: Write YAML Directly (For Text File Lovers)
+
+Create a file called `my_screening_spec.yaml` with:
+
+```yaml
+data:
+  sources:
+    - file: "C:/Users/YourName/Downloads/MySurvey.sav"
+      format: "spss"
+```
+
+**Tip:** Use forward slashes (`/`) in file paths, not backslashes (`\`)!
+
+---
+
+# Step 5: Run fury
+
+```{r run-fury}
+# Run fury on your spec file
+result <- fury_run("my_screening_spec.yaml", out_dir = "my_audit")
+```
+
+**What just happened?**
+
+fury:
+1. Read your SPSS file
+2. Created several output files in the `my_audit/audit/` folder
+3. Returned a `result` object with information about what it did
+
+**How long does this take?**
+
+- Small dataset (< 500 responses): ~5 seconds
+- Medium dataset (500-5,000 responses): ~10-30 seconds
+- Large dataset (> 5,000 responses): ~1 minute
+
+---
+
+# Step 6: Look at Your Output Files
+
+Open the folder `my_audit/audit/` on your computer. You should see these files:
+
+## File 1: `raw_codebook.csv` ⭐ (Look at this first!)
+
+**What it is:** A list of all variables (questions) in your dataset.
+
+**Open it in Excel** and you'll see columns like:
+
+- `variable` — Variable name (e.g., `Q1`, `Q2`, `satisfaction`)
+- `label` — Question text (e.g., "How satisfied are you with the product?")
+- `value_labels` — Answer options (e.g., "1 = Very Dissatisfied, 2 = Dissatisfied...")
+
+**View it in R:**
+
+```{r view-codebook}
+codebook <- read.csv("my_audit/audit/raw_codebook.csv")
+head(codebook)
+```
+
+## File 2: `source_manifest.csv`
+
+**What it is:** A record of which files fury imported and when.
+
+**Example:**
+```
+source_id | file              | format | timestamp
+----------|-------------------|--------|-------------------
+1         | MySurvey.sav      | spss   | 2024-01-19 10:30:45
+```
+
+**Why it matters:** If you import multiple files later (pilot + main), this tracks them all.
+
+## File 3: `session_info.txt`
+
+**What it is:** A record of your R version and installed packages.
+
+**Why it matters:** Reviewers can reproduce your exact setup.
+
+---
+
+# Understanding the Raw Codebook
+
+Let's say your codebook looks like this:
+
+```
+variable    | label                                  | value_labels
+------------|----------------------------------------|---------------------------
+consent     | Do you consent to participate?         | 0=No, 1=Yes
+age_group   | What is your age group?                | 1=18-24, 2=25-34, 3=35-44...
+Q1          | How satisfied are you with our product?| 1=Very Dissatisfied, 2=...
+Q2_1        | The product is high quality            | 1=Strongly Disagree, 2=...
+```
+
+**This tells you:**
+
+- Variable names you'll use in your analysis (`consent`, `age_group`, `Q1`)
+- What each question asked (the `label` column)
+- What each number means (the `value_labels` column)
+
+**This is NOT:**
+
+- ❌ Computed scale scores (fury doesn't compute scores)
+- ❌ Reliability estimates (fury doesn't calculate Cronbach's alpha)
+- ❌ Factor loadings (fury doesn't run factor analysis)
+
+**It's just a map of what's in your raw data.**
+
+---
+
+# Important: What fury Does NOT Do
+
+```{r scope}
+fury_scope()
+```
+
+fury is **only** for data preparation. It does NOT:
+
+- ❌ Run statistical tests (t-tests, ANOVA, regression)
+- ❌ Compute scale scores or reverse-code items
+- ❌ Check reliability (Cronbach's alpha, factor analysis)
+- ❌ Create APA-formatted tables or figures
+- ❌ Clean or transform your data (no recoding, no imputation)
+
+**fury shows you what variables you have. That's it (for now).**
+
+In the next tutorials, you'll learn how to:
+- Exclude participants who didn't consent
+- Flag failed attention checks
+- Separate pilot from main study data
+
+---
+
+# Troubleshooting
+
+## Problem: "Error: haven package not found"
+
+**Solution:**
+```{r fix-haven, eval=FALSE}
+install.packages("haven")
+```
+
+## Problem: "Error: file not found"
+
+**Common mistakes:**
+
+- ❌ Using backslashes: `C:\Users\...` (Windows default)
+- ✅ Use forward slashes: `C:/Users/...`
+
+**Or use `file.choose()` to let R find the path:**
+
+```{r fix-path, eval=FALSE}
+my_data_file <- file.choose()
+```
+
+## Problem: "I don't see my question text in the codebook"
+
+**Possible causes:**
+
+1. You exported as CSV instead of SPSS → Question text is lost
+2. Your Qualtrics survey doesn't have question text set → Use variable names instead
+
+**Solution:** Re-export as SPSS format from Qualtrics.
+
+---
+
+# Next Steps
+
+Now that you've imported your data and seen the codebook, you're ready to:
+
+📖 **[Tutorial 2: Track Pilot vs Main Study](tutorial-multi-source.html)** — Separate your pilot data
+
+📖 **[Tutorial 3: Apply Screening Rules](tutorial-screening.html)** — Exclude non-consenters and flag attention checks
+
+📖 **[Complete Beginner's Guide](novice-walkthrough.html)** — Full walkthrough with all concepts explained
+
+---
+
+# Summary
+
+✅ **What you did:**
+
+1. Exported Qualtrics data as SPSS
+2. Created a spec file (recipe)
+3. Ran `fury_run()` to import data
+4. Got a raw codebook showing your variables
+
+✅ **What you got:**
+
+- `raw_codebook.csv` — Map of your variables
+- `source_manifest.csv` — Record of what you imported
+- `session_info.txt` — Reproducibility information
+
+✅ **What fury did NOT do:**
+
+- Did NOT compute scores
+- Did NOT check reliability
+- Did NOT run statistical tests
+- Did NOT exclude or transform any data
+
+**Your data is unchanged. fury just documented what's in it.**
+
+---
+
+# Example: Using the Included Test File
+
+fury includes a minimal test SPSS file you can practice with:
+
+```{r example-test-file}
+library(fury)
+
+# Use the included test file
+test_file <- system.file("extdata", "test_minimal.sav", package = "fury")
+
+# Create spec
+spec <- fury_spec() %>%
+  fury_source(test_file, format = "spss")
+
+# Save and run
+fury_to_yaml(spec, "test_spec.yaml")
+result <- fury_run("test_spec.yaml", out_dir = tempdir())
+
+# View codebook
+codebook <- read.csv(file.path(result$artifacts$audit_dir, "raw_codebook.csv"))
+print(codebook)
+```
+
+**Output:**
+```
+variable          label                                    value_labels
+participant_id    Participant ID
+condition         Experimental condition assignment        1=Control, 2=Treatment
+satisfaction      How satisfied are you with the product?  1=Extremely dissatisfied, ...
+```
+
+---
+
+**Ready for the next tutorial?** → [Tutorial 2: Track Pilot vs Main Study](tutorial-multi-source.html)

@@ -15,6 +15,8 @@ Description: Consumes validated niche_spec and niche_recipe objects to orchestra
     perform modeling, scoring, construct validation, or APA rendering. Part of the
     'niche' R universe for reproducible consumer psychology research.
 License: MIT + file LICENSE
+URL: https://phdemotions.github.io/fury/, https://github.com/phdemotions/fury
+BugReports: https://github.com/phdemotions/fury/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3

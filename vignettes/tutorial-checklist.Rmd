@@ -1,0 +1,62 @@
+---
+title: "Tutorial Checklist (For Maintainers)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Tutorial Checklist (For Maintainers)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Purpose
+
+This checklist is for **package maintainers** who want to verify that tutorials meet quality standards.
+
+**For regular users:** See the [tutorials page](articles/index.html) instead.
+
+---
+
+# Required Tutorials
+
+fury must have tutorials for:
+
+1. ✅ Ingest a single SPSS .sav file and generate a RAW codebook
+2. ✅ Ingest multiple sources (pilot + main) and preserve provenance
+3. ✅ Apply screening rules and generate CONSORT flow artifacts
+
+---
+
+# Current Tutorial Status
+
+| Tutorial | Status | Location |
+|----------|--------|----------|
+| SPSS ingestion | ✅ Complete | `vignettes/tutorial-sav-ingestion.Rmd` |
+| Multi-source provenance | ✅ Complete | `vignettes/tutorial-multi-source.Rmd` |
+| Screening rules | ✅ Complete | `vignettes/tutorial-screening.Rmd` |
+| Complete beginner's guide | ✅ Complete | `vignettes/novice-walkthrough.Rmd` |
+
+---
+
+# Full Documentation
+
+For detailed tutorial requirements and quality criteria, see:
+
+**`inst/audit/TUTORIAL_CHECKLIST.md`**
+
+This document contains:
+
+- Required sections for each tutorial
+- Required callout boxes and warnings
+- Conservative language requirements
+- Novice-friendly formatting guidelines
+- Banned terms list
+
+---
+
+**For full details:** See `inst/audit/TUTORIAL_CHECKLIST.md` in the package source.

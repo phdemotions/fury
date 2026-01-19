@@ -1,0 +1,265 @@
+---
+title: "What fury Does (and Doesn't Do)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{What fury Does (and Doesn't Do)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# fury's Purpose
+
+`fury` is a **pre-analysis data ingestion and audit layer** for consumer psychology research.
+
+**Think of it as:** The step BEFORE you run your statistical analyses.
+
+---
+
+# What fury DOES ✅
+
+## 1. Import Your Data
+
+- Reads SPSS `.sav` files from Qualtrics
+- Preserves question text and answer labels
+- Tracks data provenance (which files came from where)
+
+## 2. Apply Screening Rules
+
+- **Exclude** participants who don't meet eligibility criteria (e.g., didn't consent)
+- **Flag** participants with quality issues (e.g., failed attention checks)
+- **Partition** data into pilot vs. main study
+
+## 3. Generate Audit Artifacts
+
+- Raw codebook (list of variables)
+- CONSORT flow diagram data
+- Decision registry (what you declared vs. didn't)
+- Screening summary
+- Session info for reproducibility
+
+## 4. Create an Analysis-Eligible Dataset
+
+Per your declared rules, fury produces a dataset ready for YOU to analyze.
+
+**Note:** This is NOT a "final" or "cleaned" dataset. You still need to make decisions about:
+- Flagged participants
+- Missing data
+- Outliers
+- Transformations
+
+---
+
+# What fury Does NOT Do ❌
+
+fury is intentionally scoped to avoid feature creep and maintain focus.
+
+## Does NOT Run Analyses
+
+- ❌ No t-tests, ANOVA, regression, etc.
+- ❌ No correlations or descriptive statistics
+- ❌ No hypothesis testing
+
+**Why:** fury prepares data. Use other tools (base R, tidyverse, SPSS) for analysis.
+
+## Does NOT Compute Scores
+
+- ❌ No scale totals or averages
+- ❌ No reverse-coding
+- ❌ No composite scores
+
+**Why:** Scoring logic varies by researcher. You should code this explicitly in your analysis script.
+
+## Does NOT Validate Constructs
+
+- ❌ No Cronbach's alpha
+- ❌ No factor analysis
+- ❌ No confirmatory factor analysis (CFA)
+- ❌ No structural equation modeling (SEM)
+- ❌ No reliability or validity checks
+
+**Why:** Validation belongs in separate analysis steps, not data ingestion.
+
+## Does NOT Test Hypotheses
+
+- ❌ No mediation analysis
+- ❌ No moderation analysis
+- ❌ No manipulation checks
+- ❌ No assumption testing
+
+**Why:** These are analysis tasks, not data preparation.
+
+## Does NOT Create Outputs
+
+- ❌ No APA-formatted tables
+- ❌ No figures or plots
+- ❌ No manuscript text generation
+
+**Why:** Rendering belongs to downstream packages in the niche R universe.
+
+---
+
+# Where fury Fits in Your Workflow
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 1. Design study & preregister                       │
+├─────────────────────────────────────────────────────┤
+│ 2. Collect data in Qualtrics                        │
+├─────────────────────────────────────────────────────┤
+│ 3. Export as SPSS (.sav)                            │
+├─────────────────────────────────────────────────────┤
+│ 4. Use fury to:                        ← YOU ARE HERE
+│    • Import data                                     │
+│    • Apply screening rules                           │
+│    • Generate audit artifacts                        │
+├─────────────────────────────────────────────────────┤
+│ 5. Review fury output files                         │
+│    • Check warnings.csv                              │
+│    • Review screening_summary.csv                    │
+├─────────────────────────────────────────────────────┤
+│ 6. Write your analysis script (separate from fury)  │
+│    • Compute scale scores                            │
+│    • Handle missing data                             │
+│    • Check assumptions                               │
+│    • Run statistical tests                           │
+├─────────────────────────────────────────────────────┤
+│ 7. Create APA tables and figures                    │
+├─────────────────────────────────────────────────────┤
+│ 8. Write your manuscript                            │
+├─────────────────────────────────────────────────────┤
+│ 9. Share fury artifacts as supplementary materials  │
+└─────────────────────────────────────────────────────┘
+```
+
+**fury handles steps 4-5. You handle the rest.**
+
+---
+
+# Governance: Why These Boundaries Exist
+
+fury follows strict governance rules from the **niche R universe**:
+
+## Ecosystem Contract
+
+- fury obeys object definitions from `nicheCore`
+- fury does NOT redefine `niche_spec`, `niche_recipe`, or `niche_result`
+- fury validates inputs but does NOT mutate data
+
+## Package Standard
+
+- No network access in tests
+- All writes to `tempdir()` or user-specified `out_dir`
+- Deterministic outputs (same inputs → same outputs)
+- Dependencies are one-way (fury imports `vision`, never the reverse)
+
+## Scope Discipline
+
+- fury does NOT introduce "auto-cleaning" or "smart defaults"
+- fury does NOT infer what you meant (you must declare it explicitly)
+- fury does NOT make analysis decisions for you
+
+**Why this matters:**
+
+- ✅ Prevents scope creep
+- ✅ Maintains clear boundaries between packages
+- ✅ Ensures reproducibility
+- ✅ Allows peer reviewers to audit decisions
+
+---
+
+# Frequently Asked Questions
+
+## Q: Can fury compute Cronbach's alpha?
+
+**A: No.** Use the `psych` package or similar:
+
+```{r, eval=FALSE}
+library(psych)
+alpha(my_data[, c("item1", "item2", "item3")])
+```
+
+## Q: Can fury reverse-code my items?
+
+**A: No.** Do this in your analysis script:
+
+```{r, eval=FALSE}
+library(dplyr)
+my_data <- my_data %>%
+  mutate(item2_r = 8 - item2)  # Reverse-code on 1-7 scale
+```
+
+## Q: Can fury run my t-test?
+
+**A: No.** Use base R:
+
+```{r, eval=FALSE}
+t.test(satisfaction ~ condition, data = my_data)
+```
+
+## Q: Can fury create an APA table?
+
+**A: No.** Use `papaja`, `apaTables`, or similar packages.
+
+## Q: Then what's the point of fury?
+
+**A: fury creates the audit trail and documentation for peer review.**
+
+Before fury, researchers would:
+1. Manually exclude participants (and forget to document criteria)
+2. Lose track of which data came from pilot vs. main
+3. Struggle to create CONSORT flowcharts
+4. Have no audit trail for reviewers
+
+**fury solves these problems** while staying focused on data preparation.
+
+---
+
+# What fury WILL Do in Future Versions
+
+Planned features (that stay within scope):
+
+- ✅ Support for more data formats (CSV, Qualtrics API)
+- ✅ More flexible partitioning rules
+- ✅ Enhanced provenance tracking
+- ✅ Better integration with downstream analysis packages
+
+**Planned features will NEVER include:**
+
+- ❌ Statistical analysis
+- ❌ Scoring or validation
+- ❌ APA rendering
+- ❌ "Smart" auto-cleaning
+
+**The scope boundary is permanent.**
+
+---
+
+# Summary
+
+```{r}
+library(fury)
+fury_scope()
+```
+
+**fury is a data preparation package, not an analysis package.**
+
+If you need to:
+- Import Qualtrics data → ✅ Use fury
+- Apply screening rules → ✅ Use fury
+- Document decisions for peer review → ✅ Use fury
+- Compute scores → ❌ Use your analysis script
+- Run statistical tests → ❌ Use other R packages
+- Create APA tables → ❌ Use papaja or similar
+
+**Know what fury does (and doesn't do) to use it effectively.**
+
+---
+
+**Next:** [Complete Beginner's Guide](novice-walkthrough.html) to get started with fury

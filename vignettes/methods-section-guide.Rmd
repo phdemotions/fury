@@ -1,0 +1,272 @@
+---
+title: "Writing Your Methods Section"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Writing Your Methods Section}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Templates for Your Manuscript
+
+This guide provides ready-to-use templates for writing about fury in your Methods section.
+
+**Pick the template that matches your study design**, then customize with your numbers.
+
+---
+
+# Template 1: Basic Screening (No Pilot)
+
+**Use this if:** You collected one batch of data and excluded some participants.
+
+## Template
+
+> Data were screened using the fury R package (Gonzales, 2026). Participants were excluded if they did not provide informed consent (n = [X]) or had missing data on age (n = [Y]). The final analysis-eligible sample consisted of N = [Z] participants. All screening rules were preregistered [if applicable: on the Open Science Framework, https://osf.io/xxxxx] and are available in the supplementary materials (see my_screening_spec.yaml).
+
+## Example (filled in)
+
+> Data were screened using the fury R package (Gonzales, 2026). Participants were excluded if they did not provide informed consent (n = 5) or had missing data on age (n = 3). The final analysis-eligible sample consisted of N = 192 participants. All screening rules were preregistered on the Open Science Framework (https://osf.io/abc123) and are available in the supplementary materials (see screening_spec.yaml).
+
+---
+
+# Template 2: With Pilot Study
+
+**Use this if:** You ran a pilot before your main study.
+
+## Template
+
+> Data were collected in two phases. A pilot study (N = [X]) was conducted between [dates] to test the survey instrument and procedures. Following [describe any changes: "minor wording revisions" / "no changes"], the main study (N = [Y]) was conducted between [dates]. Data were ingested and partitioned using the fury R package (Gonzales, 2026), which generated provenance artifacts documenting the partitioning decision (see decision_registry.csv and source_manifest.csv in supplementary materials). [Choose one: "Pilot and main study data were analyzed separately." / "Only main study data were analyzed."]
+
+## Example (filled in)
+
+> Data were collected in two phases. A pilot study (N = 25) was conducted between January 1-15, 2024 to test the survey instrument and procedures. Following minor wording revisions to clarify two items, the main study (N = 175) was conducted between February 1-28, 2024. Data were ingested and partitioned using the fury R package (Gonzales, 2026), which generated provenance artifacts documenting the partitioning decision (see decision_registry.csv and source_manifest.csv in supplementary materials). Pilot and main study data were analyzed separately, with pilot results reported in Appendix A.
+
+---
+
+# Template 3: With Quality Flags (Attention Checks)
+
+**Use this if:** You flagged participants but didn't exclude them.
+
+## Template
+
+> Data were screened using the fury R package (Gonzales, 2026). Participants were excluded if they did not provide informed consent (n = [X]). Participants who failed at least one attention check were flagged but retained for sensitivity analysis (n = [Y]). The final analysis-eligible sample per declared rules consisted of N = [Z] participants. [If you ran sensitivity analysis: "Results were substantively identical when excluding flagged participants (see Appendix A for sensitivity analysis)."] All screening rules and a complete participant flow diagram (CONSORT format) are available in the supplementary materials (see screening_spec.yaml and consort_flow.csv).
+
+## Example (filled in)
+
+> Data were screened using the fury R package (Gonzales, 2026). Participants were excluded if they did not provide informed consent (n = 5). Participants who failed at least one attention check were flagged but retained for sensitivity analysis (n = 12). The final analysis-eligible sample per declared rules consisted of N = 183 participants. Results were substantively identical when excluding flagged participants (see Appendix A for sensitivity analysis). All screening rules and a complete participant flow diagram (CONSORT format) are available in the supplementary materials (see screening_spec.yaml and consort_flow.csv).
+
+---
+
+# Template 4: Complex Screening (Multiple Criteria)
+
+**Use this if:** You had multiple exclusion criteria.
+
+## Template
+
+> Data were screened using the fury R package (Gonzales, 2026). Participants were excluded for the following reasons: [list criteria with counts]. A complete participant flow diagram is shown in Figure 1 (data available in consort_flow.csv in supplementary materials). The final analysis-eligible sample per declared rules consisted of N = [X] participants. All screening rules were preregistered and are available in the supplementary materials (see screening_spec.yaml).
+
+## Example (filled in)
+
+> Data were screened using the fury R package (Gonzales, 2026). Participants were excluded for the following reasons: did not provide informed consent (n = 8), failed to complete at least 80% of survey items (n = 12), had implausible completion times (< 2 minutes; n = 5), or were duplicate responses (same IP address; n = 3). A complete participant flow diagram is shown in Figure 1 (data available in consort_flow.csv in supplementary materials). The final analysis-eligible sample per declared rules consisted of N = 172 participants. All screening rules were preregistered and are available in the supplementary materials (see screening_spec.yaml).
+
+---
+
+# Creating a CONSORT Flow Diagram
+
+Use the data from `consort_flow.csv` to create your flowchart.
+
+## Example Flowchart (in Word/PowerPoint)
+
+```
+┌──────────────────────────────────┐
+│                                  │
+│    Enrolled (n = 200)            │
+│                                  │
+└────────────┬─────────────────────┘
+             │
+             ├─ Excluded (n = 18)
+             │  • No consent: 8
+             │  • Incomplete: 12
+             │
+             ↓
+┌──────────────────────────────────┐
+│  After Eligibility Check         │
+│         (n = 182)                │
+└────────────┬─────────────────────┘
+             │
+             ├─ Flagged (n = 12)
+             │  • Failed attention check: 12
+             │  (Retained for sensitivity analysis)
+             │
+             ↓
+┌──────────────────────────────────┐
+│  Analysis-Eligible Sample        │
+│  Per Declared Rules              │
+│         (n = 182)                │
+└──────────────────────────────────┘
+```
+
+**Get the numbers from `consort_flow.csv`.**
+
+---
+
+# What to Include in Supplementary Materials
+
+## Required Files
+
+1. ✅ **Your spec file** (`screening_spec.yaml` or similar)
+   - Shows exactly what rules you applied
+   - Proves you followed preregistration (if applicable)
+
+2. ✅ **`decision_registry.csv`**
+   - Documents what you declared vs. didn't declare
+   - Answers reviewer questions like "did you run a pilot?"
+
+3. ✅ **`screening_summary.csv`**
+   - Quick overview for reviewers
+   - Shows N at each screening stage
+
+## Recommended Files
+
+4. ✅ **`consort_flow.csv`**
+   - Data for your participant flow diagram
+   - Makes it easy for reviewers to verify your flowchart
+
+5. ✅ **`source_manifest.csv`**
+   - Documents which data files you imported
+   - Tracks provenance (especially important if you combined files)
+
+6. ✅ **`session_info.txt`**
+   - Documents your R setup
+   - Allows reviewers to reproduce your environment
+
+## Optional Files
+
+7. ✅ **`raw_codebook.csv`**
+   - Helps reviewers understand your measures
+   - Shows question wording and response options
+
+8. ✅ **`warnings.csv`**
+   - If it contains important information
+   - Usually only needed if there were issues
+
+---
+
+# Citation Format
+
+## In-Text Citation
+
+> (Gonzales, 2026)
+
+## References Section
+
+> Gonzales, J. (2026). *fury: Pre-Analysis Data Ingestion and Audit Layer for Consumer Psychology Research*. R package version 0.1.0. https://github.com/phdemotions/fury
+
+---
+
+# Addressing Reviewer Comments
+
+## Common Reviewer Questions → fury Artifacts That Answer Them
+
+| Reviewer Question | fury Artifact | How to Respond |
+|-------------------|---------------|----------------|
+| "Did you run a pilot?" | `decision_registry.csv` | "Yes, see decision_registry.csv which shows 'Pilot partition present: Yes'" |
+| "How many participants did you exclude and why?" | `screening_summary.csv` | "See screening_summary.csv in supplementary materials" |
+| "Can you provide a CONSORT flowchart?" | `consort_flow.csv` | "Figure 1 shows the CONSORT flow. Data available in consort_flow.csv" |
+| "Were your exclusion criteria preregistered?" | `screening_spec.yaml` | "Yes, screening rules are documented in screening_spec.yaml (preregistered on OSF [link])" |
+| "What happened to participants who failed attention checks?" | `warnings.csv`, `screening_summary.csv` | "They were flagged but retained for sensitivity analysis (see screening_summary.csv)" |
+| "Can you share your data?" | All fury outputs | "Data cannot be shared due to IRB restrictions, but all screening artifacts are available (see supplementary materials folder)" |
+
+---
+
+# Example Supplementary Materials Folder Structure
+
+```
+supplementary_materials/
+├── README.txt
+├── screening_spec.yaml
+├── decision_registry.csv
+├── screening_summary.csv
+├── consort_flow.csv
+├── source_manifest.csv
+├── session_info.txt
+└── raw_codebook.csv
+```
+
+## Sample `README.txt`
+
+```
+Supplementary Materials for:
+[Your Paper Title]
+
+This folder contains artifacts generated by the fury R package
+(Gonzales, 2026) documenting our data screening process.
+
+Files:
+- screening_spec.yaml: Declared screening rules (preregistered)
+- decision_registry.csv: What we declared vs. didn't declare
+- screening_summary.csv: Overview of exclusions/flags
+- consort_flow.csv: Participant flow data (see Figure 1 in manuscript)
+- source_manifest.csv: Data provenance
+- session_info.txt: R environment details
+- raw_codebook.csv: Variable descriptions
+
+All files are CSV or text format (open in Excel or text editor).
+
+For questions, contact [Your Email].
+
+fury package: https://github.com/phdemotions/fury
+```
+
+---
+
+# Conservative Language: What to Say (and Not Say)
+
+fury enforces conservative language to prevent inflated claims.
+
+## ✅ Say This
+
+- "analysis-eligible sample per declared rules"
+- "participants meeting eligibility criteria"
+- "data were screened according to preregistered rules"
+- "raw codebook" (not "validated codebook")
+- "flagged but retained" (not "excluded for quality")
+
+## ❌ Don't Say This
+
+- ❌ "final sample" → Use "analysis-eligible sample"
+- ❌ "cleaned data" → Use "data with declared exclusions applied"
+- ❌ "validated measures" → Use "measures" (validation is separate)
+- ❌ "reliable scales" → Don't mention reliability in data screening section
+
+**Why?** fury does NOT validate constructs or check reliability. It only applies the rules YOU declare.
+
+---
+
+# Summary: Methods Section Checklist
+
+Before submitting your manuscript, verify:
+
+- ✅ Cited fury correctly (Gonzales, 2026)
+- ✅ Stated sample size at each screening stage
+- ✅ Explained exclusion criteria clearly
+- ✅ Noted if you flagged vs. excluded participants
+- ✅ Mentioned if you ran a pilot/pretest
+- ✅ Referenced supplementary materials
+- ✅ Used conservative language (no "final sample" or "cleaned data")
+- ✅ Included CONSORT flowchart (if applicable)
+- ✅ Stated whether rules were preregistered
+
+**All information should be traceable to fury output files.**
+
+---
+
+**Next:** [Output Files Guide](output-files-guide.html) — Detailed explanation of all fury artifacts

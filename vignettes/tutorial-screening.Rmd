@@ -1,0 +1,507 @@
+---
+title: "Tutorial 3: Apply Screening Rules"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Tutorial 3: Apply Screening Rules}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# What You'll Learn
+
+In this tutorial, you'll learn how to:
+
+- ✅ Exclude participants who didn't consent (eligibility)
+- ✅ Flag (but not remove) failed attention checks (quality)
+- ✅ Generate CONSORT flow diagrams for your Methods section
+- ✅ Understand the critical difference between flagging and excluding
+
+**Time required:** 20 minutes
+
+**Prerequisites:** You completed [Tutorial 1: Import SPSS Data](tutorial-sav-ingestion.html)
+
+---
+
+# The #1 Mistake: Flagging vs. Excluding
+
+⚠️ **Read this section carefully!** This is the most common source of confusion.
+
+## Two Different Actions
+
+fury has TWO ways to handle "bad" data:
+
+### 1. Excluding = Removing Participants
+
+```
+action: "exclude"
+→ Participants are REMOVED from your dataset
+→ They do NOT appear in your final data
+→ This is permanent (within fury's output)
+```
+
+**Use for:** Eligibility criteria (must consent, must be 18+, etc.)
+
+### 2. Flagging = Marking Participants
+
+```
+action: "flag"
+→ Participants are MARKED with a flag
+→ They STAY in your dataset
+→ You decide later whether to exclude them
+```
+
+**Use for:** Quality checks (attention checks, speeders, straight-liners)
+
+## Decision Guide
+
+| Situation | Action | Why |
+|-----------|--------|-----|
+| Did not consent | **Exclude** | Ineligible to participate |
+| Under 18 years old | **Exclude** | Ineligible by IRB rules |
+| Failed attention check | **Flag** | Might want to analyze with/without them |
+| Completed survey very quickly | **Flag** | Might be valid data, might not |
+| Has missing data on key variables | **Flag** | Missing data is common, might impute |
+| Outlier on response times | **Flag** | Outliers might be real |
+
+**Golden rule:** When in doubt, **flag** (you can always exclude later in your analysis script).
+
+---
+
+# Scenario 1: Exclude Non-Consenters (Eligibility)
+
+**Goal:** Remove anyone who didn't provide consent.
+
+## Step 1: Find Your Consent Variable
+
+Look at your `raw_codebook.csv`. You might see:
+
+```
+variable | label                          | value_labels
+---------|--------------------------------|------------------
+consent  | Do you consent to participate? | 0=No, 1=Yes
+```
+
+## Step 2: Add Exclusion Rule
+
+**Option A: Using R Code**
+
+```{r exclude-consent}
+library(fury)
+
+my_data_file <- "C:/Users/YourName/Downloads/MySurvey.sav"
+
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+  fury_exclude_missing("consent")  # Remove if consent is missing
+
+fury_to_yaml(spec, "my_screening_spec.yaml")
+```
+
+**What `fury_exclude_missing()` does:**
+
+- Looks at the `consent` variable
+- If someone has a missing value (NA, blank, or didn't answer) → **excluded**
+- Excluded people do NOT appear in your output data
+
+**Option B: Write YAML Directly**
+
+```yaml
+data:
+  sources:
+    - file: "C:/Users/YourName/Downloads/MySurvey.sav"
+      format: "spss"
+
+  screening:
+    eligibility:
+      required_nonmissing: ["consent"]
+      action: "exclude"
+```
+
+## Step 3: Run fury
+
+```{r run-exclude}
+result <- fury_run("my_screening_spec.yaml", out_dir = "my_audit")
+```
+
+## Step 4: Check the Results
+
+### `screening_summary.csv`
+
+```
+stage                | n   | description
+---------------------|-----|------------------------
+enrolled             | 200 | Total enrolled
+after_eligibility    | 195 | After excluding missing consent
+analysis_eligible    | 195 | Analysis-eligible per declared rules
+```
+
+**Interpretation:** 5 people were excluded for missing consent.
+
+### `consort_flow.csv`
+
+This file is formatted for creating a **CONSORT flow diagram** (the flowchart journals require):
+
+```
+stage                | n   | exclusion_reason       | excluded_n
+---------------------|-----|------------------------|------------
+enrolled             | 200 | -                      | -
+after_eligibility    | 195 | Missing: consent       | 5
+analysis_eligible    | 195 | -                      | -
+```
+
+**Use this to create your flowchart in your paper.**
+
+---
+
+# Scenario 2: Flag Failed Attention Checks (Quality)
+
+**Goal:** Mark (but don't remove) people who failed an attention check.
+
+## Step 1: Find Your Attention Check Variable
+
+Let's say your survey had this question:
+
+> "To ensure you are paying attention, please select 'Somewhat agree' for this question."
+
+In your codebook:
+
+```
+variable      | label                  | value_labels
+--------------|------------------------|--------------------------------
+attn_check_1  | Attention check item   | 1=Strongly disagree, 2=Disagree,
+              |                        | 3=Somewhat disagree, 4=Somewhat agree,
+              |                        | 5=Agree, 6=Strongly agree
+```
+
+**Correct answer:** 4 (Somewhat agree)
+
+## Step 2: Add Flag Rule
+
+**Option A: Using R Code**
+
+```{r flag-attention}
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+  fury_exclude_missing("consent") %>%  # Still exclude non-consenters
+  fury_flag_attention(
+    var = "attn_check_1",
+    pass_values = 4,  # Correct answer
+    description = "Instructions said select 'Somewhat agree'"
+  )
+
+fury_to_yaml(spec, "my_screening_spec.yaml")
+```
+
+**What `fury_flag_attention()` does:**
+
+- Looks at `attn_check_1`
+- If the value is NOT 4 → person is **flagged**
+- Flagged people STAY in your dataset (they're just marked)
+
+**Option B: Write YAML Directly**
+
+```yaml
+data:
+  sources:
+    - file: "C:/Users/YourName/Downloads/MySurvey.sav"
+      format: "spss"
+
+  screening:
+    eligibility:
+      required_nonmissing: ["consent"]
+      action: "exclude"
+
+    quality_flags:
+      attention_checks:
+        - var: "attn_check_1"
+          pass_values: [4]
+          description: "Instructions said select 'Somewhat agree'"
+          action: "flag"
+```
+
+## Step 3: Run fury
+
+```{r run-flag}
+result <- fury_run("my_screening_spec.yaml", out_dir = "my_audit")
+```
+
+## Step 4: Check for Warnings
+
+### `warnings.csv` ⚠️
+
+```
+severity | message
+---------|------------------------------------------------------------
+warning  | 12 participants flagged for attention check failures but
+         | remain in analysis pool. Review before proceeding.
+```
+
+**What this means:**
+
+- 12 people failed the attention check
+- They are STILL in your data (flagged, not excluded)
+- You need to decide what to do with them
+
+**Your options:**
+
+### Option 1: Keep Them (No Additional Action)
+
+If you think the attention check wasn't important, just proceed. They're in your data.
+
+### Option 2: Exclude Them (Change action to "exclude")
+
+Edit your spec to change `action: "flag"` to `action: "exclude"`:
+
+```yaml
+quality_flags:
+  attention_checks:
+    - var: "attn_check_1"
+      pass_values: [4]
+      description: "Instructions said select 'Somewhat agree'"
+      action: "exclude"  # Changed from "flag"
+```
+
+Re-run fury.
+
+### Option 3: Run Analysis Twice (Sensitivity Analysis)
+
+```r
+# Analysis 1: Include everyone
+all_data <- read.csv("my_audit/data/analysis_eligible_data.csv")
+results_all <- analyze(all_data)
+
+# Analysis 2: Exclude flagged participants
+library(dplyr)
+no_flags <- all_data %>%
+  filter(attn_check_1_flag == FALSE)  # Assuming fury added this flag column
+results_no_flags <- analyze(no_flags)
+
+# Compare results
+compare(results_all, results_no_flags)
+```
+
+---
+
+# Combining Multiple Rules
+
+You can have BOTH eligibility exclusions AND quality flags:
+
+```{r combine-rules}
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+
+  # Eligibility (exclude)
+  fury_exclude_missing(c("consent", "age")) %>%
+
+  # Quality flags (don't exclude)
+  fury_flag_attention(
+    var = "attn_check_1",
+    pass_values = 4,
+    description = "Instructions said select 'Somewhat agree'"
+  ) %>%
+  fury_flag_attention(
+    var = "attn_check_2",
+    pass_values = 2,
+    description = "Instructions said select 'Disagree'"
+  )
+
+fury_to_yaml(spec, "my_screening_spec.yaml")
+result <- fury_run("my_screening_spec.yaml", out_dir = "my_audit")
+```
+
+**Result:**
+
+- People missing consent or age → **excluded** (removed)
+- People who failed attn_check_1 or attn_check_2 → **flagged** (marked, but kept)
+
+---
+
+# Understanding the CONSORT Flow
+
+After running screening rules, `consort_flow.csv` shows the participant flow:
+
+```
+stage                | n   | exclusion_reason           | excluded_n
+---------------------|-----|----------------------------|------------
+enrolled             | 200 | -                          | -
+after_eligibility    | 190 | Missing: consent, age      | 10
+after_quality        | 190 | Flagged: attn_check_1 (12) | 0
+analysis_eligible    | 190 | -                          | -
+```
+
+**Key points:**
+
+- N enrolled: 200
+- N excluded for eligibility: 10 (missing consent or age)
+- N flagged for quality: 12 (failed attention check, but NOT excluded)
+- N analysis-eligible: 190
+
+**Notice:** Flagged participants are NOT excluded (excluded_n = 0 for quality stage).
+
+---
+
+# Writing About This in Your Methods Section
+
+Here's a template:
+
+> "Data were screened using the fury R package (Gonzales, 2026). Participants were excluded if they did not provide consent or were missing age information (n = 10). Participants who failed at least one attention check were flagged but retained for sensitivity analysis (n = 12). The final analysis-eligible sample per declared rules consisted of N = 190 participants. All screening rules were preregistered (see my_screening_spec.yaml in supplementary materials). A complete CONSORT flow diagram is available in the supplementary materials (consort_flow.csv)."
+
+**Sensitivity analysis statement (if you ran analysis twice):**
+
+> "Results were substantively identical when excluding flagged participants (see Appendix A for sensitivity analysis)."
+
+---
+
+# Advanced: Multiple Attention Checks
+
+If you have multiple attention checks and want to flag people who failed ANY of them:
+
+```{r multiple-checks}
+spec <- fury_spec() %>%
+  fury_source(my_data_file, format = "spss") %>%
+  fury_flag_attention(var = "attn_check_1", pass_values = 4,
+                      description = "Select 'Somewhat agree'") %>%
+  fury_flag_attention(var = "attn_check_2", pass_values = 2,
+                      description = "Select 'Disagree'") %>%
+  fury_flag_attention(var = "attn_check_3", pass_values = 1,
+                      description = "Select 'Strongly disagree'")
+```
+
+fury will create separate flags for each check. You can later decide:
+
+- Exclude if they failed **ANY** check
+- Exclude if they failed **ALL** checks
+- Exclude if they failed **2 or more** checks
+
+---
+
+# Advanced: Custom Exclusion Logic
+
+For more complex rules, use YAML directly:
+
+```yaml
+screening:
+  eligibility:
+    custom_rules:
+      - predicate: "age >= 18"
+        description: "Must be 18 or older"
+        action: "exclude"
+      - predicate: "consent == 1"
+        description: "Must have consented"
+        action: "exclude"
+```
+
+---
+
+# Troubleshooting
+
+## Problem: "Everyone is flagged!"
+
+**Possible causes:**
+
+1. Wrong pass value (you said 4, but correct answer was actually 3)
+2. Wrong variable name
+3. Value labels don't match actual values
+
+**Solution:** Check your raw data:
+
+```{r check-values}
+library(haven)
+raw_data <- read_sav("C:/Users/YourName/Downloads/MySurvey.sav")
+table(raw_data$attn_check_1)  # See actual values
+```
+
+## Problem: "I want to exclude flagged participants, but I already ran fury"
+
+**Solution:** Two options:
+
+### Option 1: Re-run fury with action: "exclude"
+
+Change your spec and re-run. This is the cleanest approach.
+
+### Option 2: Filter in your analysis script
+
+```r
+library(dplyr)
+
+# Assuming fury added flag columns
+clean_data <- my_data %>%
+  filter(!attn_check_1_flag)  # Remove flagged participants
+```
+
+---
+
+# What Files to Share with Reviewers
+
+When you submit your paper, include these as supplementary materials:
+
+1. ✅ `my_screening_spec.yaml` — Your declared screening rules
+2. ✅ `decision_registry.csv` — What you declared vs didn't declare
+3. ✅ `screening_summary.csv` — Quick overview of exclusions/flags
+4. ✅ `consort_flow.csv` — Data for your CONSORT flow diagram
+5. ✅ `warnings.csv` — Any warnings fury generated
+6. ✅ `source_manifest.csv` — Which files you imported
+
+**Reviewers can:**
+
+- See exactly what rules you applied
+- Verify you followed your preregistration
+- Reproduce your screening process
+
+---
+
+# Next Steps
+
+Now that you've applied screening rules, you're ready to:
+
+📖 **[Output Files Guide](output-files-guide.html)** — Detailed explanation of all fury output files
+
+📖 **[Methods Section Guide](methods-section-guide.html)** — More templates and examples
+
+📖 **[Complete Beginner's Guide](novice-walkthrough.html)** — Full walkthrough with all concepts
+
+---
+
+# Summary
+
+✅ **What you did:**
+
+1. Excluded participants for eligibility (consent, age)
+2. Flagged participants for quality (attention checks)
+3. Generated CONSORT flow artifacts
+
+✅ **What you got:**
+
+- `screening_summary.csv` — Overview of exclusions/flags
+- `consort_flow.csv` — Data for your Methods section flowchart
+- `warnings.csv` — Alerts about flagged participants
+- Analysis-eligible dataset per declared rules
+
+✅ **Critical distinction:**
+
+- **Exclude** = Remove (for eligibility criteria)
+- **Flag** = Mark (for quality checks, decide later)
+
+⚠️ **Remember:**
+
+fury produces an **"analysis-eligible dataset per declared rules"**
+
+This is NOT a "final" or "cleaned" dataset. You still need to:
+- Decide what to do with flagged participants
+- Handle missing data
+- Check for outliers
+- Make other analysis decisions
+
+**fury prepares your data. YOU finish it.**
+
+---
+
+**Ready to learn more?** → [Output Files Guide](output-files-guide.html)

@@ -1,0 +1,175 @@
+url: https://phdemotions.github.io/fury/
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#2C3E50"
+    base_font: {google: "Lato"}
+    heading_font: {google: "Raleway"}
+    code_font: {google: "Source Code Pro"}
+
+home:
+  title: fury • Pre-Analysis Data Ingestion and Audit Layer
+  description: >
+    Prepare your Qualtrics data for analysis with a complete audit trail.
+    Built for researchers who need peer-review-ready documentation.
+
+navbar:
+  structure:
+    left:  [intro, tutorials, reference, articles]
+    right: [search, github]
+  components:
+    home:
+      icon: fas fa-home fa-lg
+      href: index.html
+    intro:
+      text: Get Started
+      href: articles/novice-walkthrough.html
+    tutorials:
+      text: Tutorials
+      menu:
+      - text: "🎓 Complete Beginner's Guide (START HERE!)"
+        href: articles/novice-walkthrough.html
+      - text: "---"
+      - text: "Step-by-Step Tutorials:"
+      - text: "1️⃣ Import SPSS Data (.sav)"
+        href: articles/tutorial-sav-ingestion.html
+      - text: "2️⃣ Track Pilot vs Main Study"
+        href: articles/tutorial-multi-source.html
+      - text: "3️⃣ Apply Screening Rules"
+        href: articles/tutorial-screening.html
+      - text: "---"
+      - text: "Advanced:"
+      - text: "📦 From Spec to Audit Bundle"
+        href: articles/from-spec-to-audit-bundle.html
+    reference:
+      text: Function Reference
+      menu:
+      - text: "🚀 Main Functions (Start Here)"
+      - text: "---"
+      - text: "fury_run() — Run complete workflow"
+        href: reference/fury_run.html
+      - text: "fury_spec() — Build screening rules interactively"
+        href: reference/fury_spec.html
+      - text: "---"
+      - text: "📋 Spec Builder Functions (Tidyverse-Style)"
+      - text: "---"
+      - text: "fury_source() — Add data source"
+        href: reference/fury_source.html
+      - text: "fury_partition_pilot() — Declare pilot partition"
+        href: reference/fury_partition_pilot.html
+      - text: "fury_partition_pretest() — Declare pretest partition"
+        href: reference/fury_partition_pretest.html
+      - text: "fury_exclude_missing() — Exclude missing values"
+        href: reference/fury_exclude_missing.html
+      - text: "fury_flag_missing() — Flag (don't exclude) missing values"
+        href: reference/fury_flag_missing.html
+      - text: "fury_flag_attention() — Flag attention check failures"
+        href: reference/fury_flag_attention.html
+      - text: "fury_to_yaml() — Export spec to YAML"
+        href: reference/fury_to_yaml.html
+      - text: "---"
+      - text: "🔧 Advanced Functions"
+      - text: "---"
+      - text: "fury_execute_recipe() — Execute validated recipe"
+        href: reference/fury_execute_recipe.html
+      - text: "fury_write_bundle() — Write audit bundle"
+        href: reference/fury_write_bundle.html
+      - text: "fury_scope() — Show package scope"
+        href: reference/fury_scope.html
+    articles:
+      text: Documentation
+      menu:
+      - text: "📖 Package Documentation"
+      - text: "---"
+      - text: "What fury Does (and Doesn't Do)"
+        href: articles/scope-and-governance.html
+      - text: "Output Files Explained"
+        href: articles/output-files-guide.html
+      - text: "Writing Your Methods Section"
+        href: articles/methods-section-guide.html
+      - text: "---"
+      - text: "🔍 For Maintainers & Reviewers"
+      - text: "---"
+      - text: "Audit Checklist"
+        href: articles/audit-checklist.html
+      - text: "Tutorial Checklist"
+        href: articles/tutorial-checklist.html
+    github:
+      icon: fab fa-github fa-lg
+      href: https://github.com/phdemotions/fury
+      aria-label: GitHub
+
+reference:
+- title: "🚀 Main Functions (Start Here)"
+  desc: >
+    These are the primary functions you'll use. Most users only need `fury_run()`.
+  contents:
+  - fury_run
+  - fury_spec
+  - fury_scope
+
+- title: "📋 Spec Builder Functions (Tidyverse-Style)"
+  desc: >
+    Build your screening rules interactively using pipes (`%>%`).
+    Alternative to writing YAML by hand.
+  contents:
+  - fury_source
+  - fury_partition_pilot
+  - fury_partition_pretest
+  - fury_exclude_missing
+  - fury_flag_missing
+  - fury_flag_attention
+  - fury_to_yaml
+  - print.fury_spec_builder
+
+- title: "🔧 Advanced Functions"
+  desc: >
+    For power users who want more control over the workflow.
+  contents:
+  - fury_execute_recipe
+  - fury_write_bundle
+
+articles:
+- title: "Get Started"
+  navbar: ~
+  contents:
+  - novice-walkthrough
+
+- title: "Step-by-Step Tutorials"
+  desc: >
+    Follow these tutorials in order if you're new to fury.
+  contents:
+  - tutorial-sav-ingestion
+  - tutorial-multi-source
+  - tutorial-screening
+
+- title: "Guides"
+  desc: >
+    In-depth guides for specific tasks.
+  contents:
+  - scope-and-governance
+  - output-files-guide
+  - methods-section-guide
+  - from-spec-to-audit-bundle
+
+- title: "Quality Assurance"
+  desc: >
+    For package maintainers and peer reviewers.
+  contents:
+  - audit-checklist
+  - tutorial-checklist
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with
+  components:
+    developed_by: |
+      fury is developed by <a href="https://github.com/phdemotions">Josh Gonzales</a>.
+      <br>
+      Part of the <strong>niche R universe</strong> for reproducible consumer psychology research.
+    built_with: |
+      Built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> {{version}}.
+      <br>
+      <a href="https://github.com/phdemotions/fury/blob/main/LICENSE">MIT License</a>

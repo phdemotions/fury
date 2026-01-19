@@ -1,0 +1,436 @@
+---
+title: "Output Files Explained"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Output Files Explained}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# What fury Creates
+
+When you run `fury_run()`, it creates a folder (usually `my_audit/audit/`) with several CSV and text files.
+
+**This guide explains:**
+
+- ✅ What each file contains
+- ✅ Why it exists
+- ✅ How to use it in your research
+
+---
+
+# Quick Reference: Which File to Open First?
+
+**If you want to...** | **Open this file:**
+----------------------|--------------------
+Check if something went wrong | **`warnings.csv`** ⭐ START HERE
+See how many people were excluded | **`screening_summary.csv`**
+Understand your variables (questions) | **`raw_codebook.csv`**
+Create a CONSORT flowchart for your paper | **`consort_flow.csv`**
+Verify you declared a pilot partition | **`decision_registry.csv`**
+Track which data files you imported | **`source_manifest.csv`**
+Document your R setup for reviewers | **`session_info.txt`**
+
+---
+
+# Core Files (Everyone Needs These)
+
+## 1. `warnings.csv` ⭐
+
+**What it is:** Alerts about potential issues with your screening rules.
+
+**Why it matters:** This file tells you if something looks wrong BEFORE you start analyzing.
+
+**When to check it:** ALWAYS check this file first after running fury.
+
+### What You'll See
+
+**If everything is fine:**
+```
+# File is empty or only has informational messages
+```
+
+**If you have flagged participants:**
+```
+severity | message
+---------|------------------------------------------------------------
+warning  | 12 participants flagged for attention check failures but
+         | remain in analysis pool. Review before proceeding.
+```
+
+**If you forgot to declare a pilot:**
+```
+severity | message
+---------|------------------------------------------------------------
+info     | No pilot partition declared. All data treated as main study.
+         | If you ran a pilot, add fury_partition_pilot() to your spec.
+```
+
+### What to Do
+
+| Severity | Action |
+|----------|--------|
+| `info` | Just for your information, no action needed |
+| `warning` | Review and decide if you need to change your spec |
+| `error` | Something is wrong, fix your spec and re-run |
+
+**Golden rule:** If `warnings.csv` is empty (or only has `info` messages), you're probably good to proceed.
+
+---
+
+## 2. `screening_summary.csv`
+
+**What it is:** A one-page overview of what happened during screening.
+
+**Why it matters:** Quick reference for how many people were excluded/flagged and why.
+
+**When to use it:** When writing your Methods section or checking results quickly.
+
+### Example Content
+
+```csv
+stage,n,description
+enrolled,200,Total participants enrolled
+excluded_eligibility,10,"Excluded: missing consent (5), missing age (5)"
+flagged_quality,12,Flagged: failed attention check (12)
+analysis_eligible,190,Analysis-eligible per declared rules
+```
+
+### How to Read It
+
+- **enrolled:** Total participants in your raw data
+- **excluded_eligibility:** How many removed for not meeting eligibility criteria
+- **flagged_quality:** How many marked (but not removed) for quality issues
+- **analysis_eligible:** How many participants are in your final dataset
+
+**Key point:** Flagged participants are NOT excluded (they're still in the `analysis_eligible` count).
+
+---
+
+## 3. `raw_codebook.csv`
+
+**What it is:** A list of all variables in your dataset with question text and answer options.
+
+**Why it matters:** Helps you understand what variables you have and what they mean.
+
+**When to use it:** When planning your analysis or writing variable descriptions in your paper.
+
+### Example Content
+
+```csv
+variable,type,label,value_labels
+participant_id,numeric,Participant ID,
+consent,numeric,Do you consent to participate?,"0=No, 1=Yes"
+age_group,numeric,What is your age group?,"1=18-24, 2=25-34, 3=35-44, 4=45-54, 5=55+"
+Q1,numeric,How satisfied are you with our product?,"1=Very Dissatisfied, 2=Dissatisfied, 3=Neutral, 4=Satisfied, 5=Very Satisfied"
+Q2_1,numeric,The product is high quality,"1=Strongly Disagree, 2=Disagree, 3=Somewhat Disagree, 4=Somewhat Agree, 5=Agree, 6=Strongly Agree"
+comments,character,Additional comments (open-ended),
+```
+
+### Columns Explained
+
+- **variable:** The variable name you'll use in R
+- **type:** numeric, character, date, etc.
+- **label:** The question text from Qualtrics
+- **value_labels:** What each number means (for numeric variables)
+
+### What This Is NOT
+
+- ❌ NOT computed scale scores (fury doesn't compute scores)
+- ❌ NOT reliability estimates (fury doesn't calculate Cronbach's alpha)
+- ❌ NOT validated constructs (fury doesn't run factor analysis)
+
+**This is just a map of what's in your raw data.**
+
+---
+
+# Screening Artifacts (For Your Methods Section)
+
+## 4. `consort_flow.csv`
+
+**What it is:** Data formatted for creating a CONSORT flow diagram.
+
+**Why it matters:** Most journals require a participant flow diagram in your Methods section.
+
+**When to use it:** When creating your CONSORT flowchart in Word/PowerPoint.
+
+### Example Content
+
+```csv
+stage,n,exclusion_reason,excluded_n
+enrolled,200,-,-
+after_eligibility,190,"Missing: consent (5), age (5)",10
+after_quality,190,"Flagged: attention check (12)",0
+analysis_eligible,190,-,-
+```
+
+### How to Use This
+
+Copy these numbers into a flowchart:
+
+```
+┌─────────────────────────┐
+│   Enrolled (n=200)      │
+└───────────┬─────────────┘
+            │
+            ↓
+    Excluded (n=10)
+    • Missing consent: 5
+    • Missing age: 5
+            │
+            ↓
+┌─────────────────────────┐
+│ After Eligibility       │
+│      (n=190)            │
+└───────────┬─────────────┘
+            │
+            ↓
+    Flagged (n=12)
+    • Failed attention check: 12
+    (Flagged participants retained)
+            │
+            ↓
+┌─────────────────────────┐
+│ Analysis-Eligible       │
+│      (n=190)            │
+└─────────────────────────┘
+```
+
+**Note:** Flagged participants are NOT excluded (that's why `excluded_n = 0` for quality stage).
+
+---
+
+## 5. `decision_registry.csv`
+
+**What it is:** A record of what you declared vs. what you didn't declare.
+
+**Why it matters:** Proves to reviewers that you explicitly made (or didn't make) certain decisions.
+
+**When to use it:** When reviewers ask "did you run a pilot?" or "did you preregister exclusions?"
+
+### Example Content
+
+```csv
+decision_type,value,details
+Pilot partition present,Yes,"Date range: 2024-01-01 to 2024-01-15"
+Pretest partition present,No,-
+Eligibility exclusions declared,Yes,"Required non-missing: consent, age"
+Quality flags declared,Yes,"Attention checks: attn_check_1"
+Custom exclusion rules,No,-
+```
+
+### Why This Exists
+
+**Without this file:**
+- Reviewer: "Did you run a pilot study?"
+- You: "Uh... I think so? Let me check my notes..."
+
+**With this file:**
+- Reviewer: "Did you run a pilot study?"
+- You: "Yes, see decision_registry.csv in supplementary materials. Pilot partition present = Yes, January 1-15, 2024."
+
+**Clear, defensible, auditable.**
+
+---
+
+# Provenance Tracking
+
+## 6. `source_manifest.csv`
+
+**What it is:** A record of which data files you imported and when.
+
+**Why it matters:** Documents data provenance for reproducibility.
+
+**When to use it:** When you have multiple data sources or need to prove which files you used.
+
+### Example Content
+
+```csv
+source_id,file,format,n_rows,n_vars,ingested_at
+1,MySurvey.sav,spss,200,45,2024-01-19 10:30:45
+```
+
+### Multiple Sources Example
+
+If you imported pilot + main:
+
+```csv
+source_id,file,format,n_rows,n_vars,ingested_at
+1,pilot_survey.sav,spss,25,45,2024-01-19 10:30:45
+2,main_survey.sav,spss,175,45,2024-01-19 10:31:02
+```
+
+**Why this matters:** Reviewers can see that you combined two files and verify the total N.
+
+---
+
+# Reproducibility
+
+## 7. `session_info.txt`
+
+**What it is:** A record of your R version, installed packages, and system information.
+
+**Why it matters:** Allows reviewers to reproduce your exact setup.
+
+**When to use it:** Include in supplementary materials for peer review.
+
+### Example Content
+
+```
+R version 4.3.0 (2023-04-21)
+Platform: x86_64-apple-darwin20 (64-bit)
+Running under: macOS Big Sur 11.7.10
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] fury_0.1.0         vision_0.1.0      nicheCore_0.1.0
+[4] haven_2.5.2        dplyr_1.1.2
+
+loaded via a namespace (and not attached):
+[1] compiler_4.3.0    cli_3.6.1         tools_4.3.0
+[4] rstudioapi_0.14   yaml_2.3.7        ...
+```
+
+**What reviewers can do with this:**
+
+- Install the exact versions of packages you used
+- Verify there are no conflicts
+- Reproduce your analysis environment
+
+---
+
+# Files You Might NOT Have
+
+These files only appear in certain situations:
+
+## `import_log.csv`
+
+**When it appears:** If fury encountered issues during data import
+
+**What it contains:** Detailed log of import process (warnings, errors, etc.)
+
+**Example:**
+```csv
+timestamp,level,message
+2024-01-19 10:30:45,info,"Reading MySurvey.sav"
+2024-01-19 10:30:46,warning,"Variable Q5 has no value labels"
+2024-01-19 10:30:47,info,"Successfully imported 200 rows"
+```
+
+## `screening_detailed.csv`
+
+**When it appears:** If you have complex screening rules
+
+**What it contains:** Detailed breakdown of which participants failed which checks
+
+**Use case:** Debugging why more people were excluded than expected
+
+---
+
+# Where to Find These Files
+
+After running:
+```r
+result <- fury_run("my_spec.yaml", out_dir = "my_audit")
+```
+
+**All files are in:**
+```
+my_audit/
+  └── audit/
+      ├── warnings.csv
+      ├── screening_summary.csv
+      ├── raw_codebook.csv
+      ├── consort_flow.csv
+      ├── decision_registry.csv
+      ├── source_manifest.csv
+      └── session_info.txt
+```
+
+**To find them in R:**
+```{r find-files}
+# The audit directory path
+audit_dir <- result$artifacts$audit_dir
+
+# Specific files
+warnings_file <- file.path(audit_dir, "warnings.csv")
+summary_file <- file.path(audit_dir, "screening_summary.csv")
+codebook_file <- file.path(audit_dir, "raw_codebook.csv")
+
+# Read them
+warnings <- read.csv(warnings_file)
+summary <- read.csv(summary_file)
+codebook <- read.csv(codebook_file)
+```
+
+---
+
+# Recommended Workflow
+
+**After running fury:**
+
+1. ✅ **Open `warnings.csv`** — Any issues?
+2. ✅ **Open `screening_summary.csv`** — Do the numbers look right?
+3. ✅ **Open `raw_codebook.csv`** — Do you have all the variables you expect?
+4. ✅ If you declared a pilot, **open `decision_registry.csv`** — Does it say "Yes"?
+5. ✅ If you excluded/flagged participants, **open `consort_flow.csv`** — Ready for your Methods section?
+
+**If all looks good → Proceed to your analysis script.**
+
+**If something looks wrong → Edit your spec and re-run fury.**
+
+---
+
+# What to Share with Reviewers
+
+**Required (always include):**
+
+1. ✅ Your spec file (`.yaml`)
+2. ✅ `screening_summary.csv`
+3. ✅ `consort_flow.csv` (if you excluded/flagged anyone)
+4. ✅ `decision_registry.csv`
+
+**Recommended (helps reproducibility):**
+
+5. ✅ `source_manifest.csv`
+6. ✅ `session_info.txt`
+7. ✅ `raw_codebook.csv` (helps reviewers understand your measures)
+
+**Optional (only if relevant):**
+
+8. ✅ `warnings.csv` (if it contains important information)
+9. ✅ `import_log.csv` (if you had import issues)
+
+---
+
+# Summary
+
+fury creates **7 core files** for documentation and reproducibility:
+
+| File | Purpose | Use In |
+|------|---------|--------|
+| `warnings.csv` | Alerts about issues | Check first! |
+| `screening_summary.csv` | Quick overview | Methods section |
+| `raw_codebook.csv` | Variable reference | Analysis planning |
+| `consort_flow.csv` | Participant flow | CONSORT diagram |
+| `decision_registry.csv` | What you declared | Peer review defense |
+| `source_manifest.csv` | Data provenance | Reproducibility |
+| `session_info.txt` | R environment | Reproducibility |
+
+**All files are human-readable CSVs** (except session_info.txt). Open them in Excel, Google Sheets, or any text editor.
+
+**None of these files contain your actual data** (participant responses). They only contain metadata and summaries.
+
+---
+
+**Next:** [Methods Section Guide](methods-section-guide.html) — How to cite these files in your paper
